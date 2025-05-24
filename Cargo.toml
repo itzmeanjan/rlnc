@@ -4,6 +4,19 @@ version = "0.1.0"
 edition = "2024"
 description = "Random Linear Network Coding"
 license = "MPL-2.0"
+resolver = "3"
 
 [dependencies]
 rand = "=0.9.1"
+
+[profile.optimized]
+inherits = "release"
+codegen-units = 1
+lto = "thin"
+panic = "abort"
+
+[profile.test-release]
+inherits = "release"
+debug = true
+debug-assertions = true
+overflow-checks = true
