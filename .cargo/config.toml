@@ -1,0 +1,5 @@
+[target.wasm32-wasip1]
+runner = "wasmtime"
+
+[target.'cfg(not(target_family = "wasm")))']
+rustflags = ["-C", "target-cpu=native"]

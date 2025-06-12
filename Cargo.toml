@@ -4,6 +4,34 @@ version = "0.1.0"
 edition = "2024"
 description = "Random Linear Network Coding"
 license = "MPL-2.0"
+resolver = "3"
 
 [dependencies]
 rand = "=0.9.1"
+
+[dev-dependencies]
+divan = "=0.1.21"
+
+[[bench]]
+name = "full_rlnc_encoder"
+harness = false
+
+[[bench]]
+name = "full_rlnc_recoder"
+harness = false
+
+[[bench]]
+name = "full_rlnc_decoder"
+harness = false
+
+[profile.optimized]
+inherits = "release"
+codegen-units = 1
+lto = "thin"
+panic = "abort"
+
+[profile.test-release]
+inherits = "release"
+debug = true
+debug-assertions = true
+overflow-checks = true
