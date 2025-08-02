@@ -1,5 +1,5 @@
 //! Following GF(2**8) logarithm and exponentiation tables are generated using
-//! Python script @ https://gist.github.com/itzmeanjan/0b2ec3f378de2c2e911bd4bb5505d45a.
+//! Python script @ <https://gist.github.com/itzmeanjan/0b2ec3f378de2c2e911bd4bb5505d45a>.
 
 use rand::Rng;
 use rand::distr::{Distribution, StandardUniform};
