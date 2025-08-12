@@ -1,6 +1,7 @@
-use neon;
+mod neon;
+use std::arch::is_aarch64_feature_detected;
 
-pub(super) unsafe fn gf256_inplace_mul_vec_by_scalar(vec: &mut [u8], scalar: u8) -> bool {
+pub(super) fn gf256_inplace_mul_vec_by_scalar(vec: &mut [u8], scalar: u8) -> bool {
     if is_aarch64_feature_detected!("neon") {
         unsafe { neon::mul_vec_by_scalar(vec, scalar) };
         return true;
