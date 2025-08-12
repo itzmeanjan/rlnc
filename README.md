@@ -84,13 +84,16 @@ Coverage Results:
 || Tested/Total Lines:
 || src/common/errors.rs: 0/1
 || src/common/gf256.rs: 9/11
-|| src/common/simd.rs: 42/64
-|| src/full/decoder.rs: 29/34
-|| src/full/decoder_matrix.rs: 50/55
-|| src/full/encoder.rs: 28/28
-|| src/full/recoder.rs: 30/36
+|| src/common/simd/mod.rs: 6/9
+|| src/common/simd/x86/avx2.rs: 10/10
+|| src/common/simd/x86/mod.rs: 6/15
+|| src/common/simd/x86/ssse3.rs: 0/10
+|| src/full/decoder.rs: 25/32
+|| src/full/decoder_matrix.rs: 51/58
+|| src/full/encoder.rs: 24/27
+|| src/full/recoder.rs: 28/36
 ||
-82.10% coverage, 188/229 lines covered
+76.08% coverage, 159/209 lines covered
 ```
 
 This will create an HTML coverage report at `tarpaulin-report.html` that you can open in your web browser to view detailed line-by-line coverage information for all source files.
