@@ -890,6 +890,9 @@ I maintain an example demonstrating the Full RLNC workflow:
 
 See [full_rlnc.rs](./examples/full_rlnc.rs) example program. Run the program with `$ make example`.
 
+<details>
+<summary>Click to view detailed example run output 👇</summary>
+
 ```bash
 Initialized Encoder with 10240 bytes of data, split into 32 pieces, each of 321 bytes. Each coded piece will be of 353 bytes.
 Initializing Decoder, expecting 32 original pieces of 321 bytes each.
@@ -1018,3 +1021,5 @@ Retrieving decoded data...
 
 RLNC workflow completed successfully! Original data matches decoded data.
 ```
+
+</details>
