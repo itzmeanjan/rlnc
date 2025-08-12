@@ -34,7 +34,9 @@ make test
 
 # Testing on web assembly target, using `wasmtime`.
 rustup target add wasm32-wasip1
-cargo install wasmtime-cli --locked
+rustup target add wasm32-wasip2
+cargo install wasmtime-cli@35.0.0 --locked
+
 make test-wasm
 ```
 
