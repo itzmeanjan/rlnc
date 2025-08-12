@@ -93,9 +93,9 @@
 //!
 //! ```toml
 //! [dependencies]
-//! rlnc = "=0.8.1"                                      # On x86 target, it offers AVX2 and SSSE3 optimization for fast encoding/ recoding.
+//! rlnc = "=0.8.2"                                      # On x86 and aarch64 targets, it offers fast encoding, recoding and decoding, using SIMD intrinsics.
 //! # or
-//! rlnc = { version = "=0.8.1", features = "parallel" } # Uses `rayon`-based data-parallelism for fast encoding/ recoding.
+//! rlnc = { version = "=0.8.2", features = "parallel" } # Uses `rayon`-based data-parallelism for fast encoding/ recoding. Decoding is not yet parallelized.
 //!
 //! rand = { version = "=0.9.1" } # Required for random number generation
 //! ```

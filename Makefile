@@ -24,6 +24,7 @@ test: ## Run all tests
 .PHONY: test-wasm
 test-wasm: ## Run all tests in WASM environment
 	$(BACKTRACE) cargo test --target wasm32-wasip1 --profile test-release --no-default-features
+	$(BACKTRACE) cargo test --target wasm32-wasip2 --profile test-release --no-default-features
 
 .PHONY: coverage
 coverage: ## Generates HTML code coverage report, using `cargo-tarpaulin`
@@ -46,3 +47,4 @@ example: ## Runs the Full RLNC example program
 .PHONY: example-wasm
 example-wasm: ## Runs the Full RLNC example program in WASM environment
 	cargo run --example full_rlnc --target wasm32-wasip1 --no-default-features
+	cargo run --example full_rlnc --target wasm32-wasip2 --no-default-features

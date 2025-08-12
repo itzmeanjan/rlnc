@@ -1,4 +1,4 @@
-[target.wasm32-wasip1]
+[target.'cfg(all(target_family = "wasm", target_os = "wasi", any(target_env = "p1", target_env = "p2")))']
 runner = "wasmtime"
 
 [target.'cfg(not(target_family = "wasm")))']

@@ -1,6 +1,6 @@
 //! Compile-time executable function, helps you in generating lookup tables, so that you can perform AVX2 and SSSE3
 //! optimized SIMD vector x single-scalar multiplication over GF(2^8), during RLNC erasure-coding. These table generation
-//! logic is from https://github.com/ceph/gf-complete/blob/a6862d10c9db467148f20eef2c6445ac9afd94d8/src/gf_w8.c#L1100-L1105.
+//! logic is from <https://github.com/ceph/gf-complete/blob/a6862d10c9db467148f20eef2c6445ac9afd94d8/src/gf_w8.c#L1100-L1105>.
 //!
 //! If you invoke `generate_gf256_simd_mul_table(true)`, it should generate `htd->low` part, described in above link.
 //! Plain Rust code which should regenerate same table is as follows.
@@ -65,11 +65,11 @@ const fn generate_gf256_simd_mul_table(is_low_part: bool) -> [[u8; 2 * GF256_HAL
 }
 
 /// AVX2 and SSSE3 optimized SIMD multiplication over GF(2^8) uses this lookup table, which is generated following
-/// https://github.com/ceph/gf-complete/blob/a6862d10c9db467148f20eef2c6445ac9afd94d8/src/gf_w8.c#L1100-L1105.
+/// <https://github.com/ceph/gf-complete/blob/a6862d10c9db467148f20eef2c6445ac9afd94d8/src/gf_w8.c#L1100-L1105>.
 /// This table holds `htd->low` part, described in above link.
 pub const GF256_SIMD_MUL_TABLE_LOW: [[u8; 2 * GF256_HALF_ORDER]; GF256_ORDER] = generate_gf256_simd_mul_table(true);
 
 /// AVX2 and SSSE3 optimized SIMD multiplication over GF(2^8) uses this lookup table, which is generated following
-/// https://github.com/ceph/gf-complete/blob/a6862d10c9db467148f20eef2c6445ac9afd94d8/src/gf_w8.c#L1100-L1105.
+/// <https://github.com/ceph/gf-complete/blob/a6862d10c9db467148f20eef2c6445ac9afd94d8/src/gf_w8.c#L1100-L1105>.
 /// This table holds `htd->high` part, described in above link.
 pub const GF256_SIMD_MUL_TABLE_HIGH: [[u8; 2 * GF256_HALF_ORDER]; GF256_ORDER] = generate_gf256_simd_mul_table(false);

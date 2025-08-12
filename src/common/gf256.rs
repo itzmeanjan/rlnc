@@ -1,5 +1,5 @@
 //! Following GF(2**8) logarithm and exponentiation tables are generated using
-//! Python script @ https://gist.github.com/itzmeanjan/0b2ec3f378de2c2e911bd4bb5505d45a.
+//! Python script @ <https://gist.github.com/itzmeanjan/0b2ec3f378de2c2e911bd4bb5505d45a>.
 
 use rand::Rng;
 use rand::distr::{Distribution, StandardUniform};
@@ -7,10 +7,10 @@ use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 
 pub const GF256_ORDER: usize = u8::MAX as usize + 1;
 
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
 pub const GF256_BIT_WIDTH: usize = u8::BITS as usize;
 
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
 pub const GF256_HALF_ORDER: usize = 1usize << (GF256_BIT_WIDTH / 2);
 
 const GF256_LOG_TABLE: [u8; GF256_ORDER] = [
