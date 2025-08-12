@@ -2,11 +2,11 @@ use super::consts::BOUNDARY_MARKER;
 use crate::RLNCError;
 use rand::Rng;
 
-#[cfg(all(feature = "parallel", not(any(target_arch = "x86", target_arch = "x86_64"))))]
+#[cfg(all(feature = "parallel", not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))))]
 use crate::common::gf256::Gf256;
 #[cfg(not(feature = "parallel"))]
 use crate::common::simd::gf256_mul_vec_by_scalar_then_add_into_vec;
-#[cfg(all(feature = "parallel", any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(all(feature = "parallel", any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
 use crate::common::simd::{gf256_inplace_add_vectors, gf256_inplace_mul_vec_by_scalar};
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -148,7 +148,7 @@ impl Encoder {
             .par_chunks_exact(self.piece_byte_len)
             .zip(coding_vector)
             .map(|(piece, &random_symbol)| {
-                #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+                #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
                 {
                     let mut scalar_x_piece = piece.to_vec();
                     gf256_inplace_mul_vec_by_scalar(&mut scalar_x_piece, random_symbol);
@@ -156,7 +156,7 @@ impl Encoder {
                     scalar_x_piece
                 }
 
-                #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+                #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
                 {
                     piece.iter().map(move |&symbol| (Gf256::new(symbol) * Gf256::new(random_symbol)).get())
                 }
@@ -164,10 +164,10 @@ impl Encoder {
             .fold(
                 || vec![0u8; self.piece_byte_len],
                 |mut acc, cur| {
-                    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+                    #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
                     gf256_inplace_add_vectors(&mut acc, &cur);
 
-                    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+                    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
                     acc.iter_mut().zip(cur).for_each(|(a, b)| {
                         *a ^= b;
                     });
@@ -178,10 +178,10 @@ impl Encoder {
             .reduce(
                 || vec![0u8; self.piece_byte_len],
                 |mut acc, cur| {
-                    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+                    #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
                     gf256_inplace_add_vectors(&mut acc, &cur);
 
-                    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+                    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
                     acc.iter_mut().zip(cur).for_each(|(a, b)| {
                         *a ^= b;
                     });
