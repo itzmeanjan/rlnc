@@ -66,22 +66,25 @@ impl DecoderMatrix {
     /// # Arguments
     /// * `row1_idx` - The index of the first row.
     /// * `row2_idx` - The index of the second row.
-    ///
-    /// # Panics
-    /// Panics if either row index is out of bounds.
     pub fn swap_rows(&mut self, row1_idx: usize, row2_idx: usize) -> &mut Self {
-        let row1_begins_at = row1_idx * self.cols;
-        let row1_ends_at = row1_begins_at + self.cols;
+        if row1_idx == row2_idx {
+            return self;
+        }
 
-        let row2_begins_at = row2_idx * self.cols;
-        let row2_ends_at = row2_begins_at + self.cols;
+        let (r1, r2) = if row1_idx < row2_idx { (row1_idx, row2_idx) } else { (row2_idx, row1_idx) };
 
-        let (left, right) = unsafe { self.elements.split_at_mut_unchecked(row1_ends_at) };
+        let start1 = r1 * self.cols;
+        let end1 = start1 + self.cols;
+        let start2 = r2 * self.cols;
 
-        let left_slice = &mut left[row1_begins_at..];
-        let right_slice = &mut right[(row2_begins_at - row1_ends_at)..(row2_ends_at - row1_ends_at)];
+        let (left, right) = self.elements.split_at_mut(start2);
 
-        left_slice.swap_with_slice(right_slice);
+        // row1 is in the first part
+        let row1 = &mut left[start1..end1];
+        // row2 is the beginning of the second part
+        let row2 = &mut right[..self.cols];
+
+        row1.swap_with_slice(row2);
 
         self
     }
