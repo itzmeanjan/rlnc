@@ -160,6 +160,8 @@ impl Encoder {
         Ok(())
     }
 
+    /// This function is deprecated.
+    ///
     /// Encodes the data held by the encoder using a provided coding vector.
     ///
     /// The resulting coded piece is returned as a `Vec<u8>`, prefixed by the
@@ -168,6 +170,12 @@ impl Encoder {
     ///
     /// Returns `RLNCError::CodingVectorLengthMismatch` if the length of the
     /// provided `coding_vector` does not match `self.piece_count`.
+    ///
+    /// # Deprecated
+    /// Use the allocation friendly `code_with_buf_coding_vector` instead.
+    /// This method is deprecated due to performance and memory usage concerns.
+    /// It uses a vector allocation for each coded piece, which can be inefficient.
+    #[deprecated(since = "0.9.0", note = "Use `code_with_buf_coding_vector` instead for better performance and memory usage.")]
     #[cfg(feature = "parallel")]
     pub fn code_with_coding_vector(&self, coding_vector: &[u8]) -> Result<Vec<u8>, RLNCError> {
         if coding_vector.len() != self.piece_count {
@@ -417,7 +425,8 @@ mod tests {
         // Test case 1: Coding vector is shorter than expected
         let short_coding_vector_len = piece_count - 1;
         let short_coding_vector: Vec<u8> = (0..short_coding_vector_len).map(|_| rng.random()).collect();
-        let result_short = encoder.code_with_coding_vector(&short_coding_vector);
+        let mut buf_short_coding_vector = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+        let result_short = encoder.code_with_buf_coding_vector(&short_coding_vector, &mut buf_short_coding_vector);
 
         assert!(result_short.is_err());
         assert_eq!(
@@ -428,7 +437,7 @@ mod tests {
         // Test case 2: Coding vector is longer than expected
         let long_coding_vector_len = piece_count + 1;
         let long_coding_vector: Vec<u8> = (0..long_coding_vector_len).map(|_| rng.random()).collect();
-        let result_long = encoder.code_with_coding_vector(&long_coding_vector);
+        let result_long = encoder.code_with_buf_coding_vector(&long_coding_vector, &mut vec![0u8; encoder.get_full_coded_piece_byte_len()]);
 
         assert!(result_long.is_err());
         assert_eq!(
@@ -438,7 +447,7 @@ mod tests {
 
         // Test case 3: Empty coding vector
         let empty_coding_vector: Vec<u8> = Vec::new();
-        let result_empty = encoder.code_with_coding_vector(&empty_coding_vector);
+        let result_empty = encoder.code_with_buf_coding_vector(&empty_coding_vector, &mut vec![0u8; encoder.get_full_coded_piece_byte_len()]);
 
         assert!(result_empty.is_err());
         assert_eq!(
@@ -448,13 +457,11 @@ mod tests {
 
         // Test case 4: Valid coding vector
         let valid_coding_vector: Vec<u8> = (0..piece_count).map(|_| rng.random()).collect();
-        let result_valid = encoder.code_with_coding_vector(&valid_coding_vector);
+        let mut buf_valid_coding_vector = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+        let result_valid = encoder.code_with_buf_coding_vector(&valid_coding_vector, &mut buf_valid_coding_vector);
 
         assert!(result_valid.is_ok());
-        assert_eq!(
-            result_valid.expect("Expected a valid coded piece").len(),
-            encoder.get_full_coded_piece_byte_len()
-        );
+        assert_eq!(buf_valid_coding_vector.len(), encoder.get_full_coded_piece_byte_len());
     }
 
     #[test]
