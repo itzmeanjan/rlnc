@@ -129,16 +129,22 @@ fn recode(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
 
     bencher
         .with_inputs(|| {
+            // Pre-allocate the final output buffer ONCE.
+            let output_buffer = vec![0u8; encoder.get_full_coded_piece_byte_len()];
             (
                 rand::rng(),
                 Recoder::new(coded_pieces.clone(), encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC recoder"),
+                output_buffer,
             )
         })
-        .input_counter(|(_, recoder)| {
+        .input_counter(|(_, recoder, _)| {
             divan::counter::BytesCount::new(
                 recoder.get_full_coded_piece_byte_len() * recoder.get_num_pieces_recoded_together() + // Number of bytes used as input to recoder
                 recoder.get_full_coded_piece_byte_len(), // Number of bytes for each recoded piece
             )
         })
-        .bench_refs(|(rng, recoder)| divan::black_box(&recoder).recode(divan::black_box(rng)));
+        .bench_local_refs(|(rng, recoder, output_buffer)| {
+            recoder.recode(rng, output_buffer).unwrap();
+            divan::black_box(output_buffer);
+        });
 }

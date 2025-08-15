@@ -131,6 +131,37 @@ impl Encoder {
 
     /// Encodes the data held by the encoder using a provided coding vector.
     ///
+    /// The resulting coded piece is written into the provided output buffer `out_buf`,
+    /// coding vector itself (as `u8` values). The total length of the returned
+    /// vector is `self.get_complete_coded_piece_byte_len()`.
+    ///
+    /// Returns `RLNCError::CodingVectorLengthMismatch` if the length of the
+    /// provided `coding_vector` does not match `self.piece_count`.
+    #[cfg(not(feature = "parallel"))]
+    pub fn code_with_buf_coding_vector(&self, coding_vector: &[u8], out_buf: &mut [u8]) -> Result<(), RLNCError> {
+        if coding_vector.len() != self.piece_count {
+            return Err(RLNCError::CodingVectorLengthMismatch);
+        }
+
+        if out_buf.len() < self.get_full_coded_piece_byte_len() {
+            return Err(RLNCError::CodingVectorLengthMismatch);
+        }
+
+        // We will use the out_buf by using `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices
+        let (coding_vector_buf, coded_piece_buf) = out_buf.split_at_mut(self.piece_count);
+        coding_vector_buf[..self.piece_count].copy_from_slice(coding_vector);
+        coded_piece_buf.fill(0); // Initialize the coded piece buffer to zero
+
+        self.data
+            .chunks_exact(self.piece_byte_len)
+            .zip(coding_vector)
+            .for_each(|(piece, &random_symbol)| gf256_mul_vec_by_scalar_then_add_into_vec(coded_piece_buf, piece, random_symbol));
+
+        Ok(())
+    }
+
+    /// Encodes the data held by the encoder using a provided coding vector.
+    ///
     /// The resulting coded piece is returned as a `Vec<u8>`, prefixed by the
     /// coding vector itself (as `u8` values). The total length of the returned
     /// vector is `self.get_complete_coded_piece_byte_len()`.
@@ -196,6 +227,77 @@ impl Encoder {
 
         Ok(full_coded_piece)
     }
+    /// Encodes the data held by the encoder using a provided coding vector.
+    ///
+    /// The resulting coded piece is written into the provided output buffer `out_buf`,
+    /// prefixed by the coding vector itself (as `u8` values). The total
+    /// length of the output buffer is `self.get_complete_coded_piece_byte_len()`.
+    ///
+    /// Returns `RLNCError::CodingVectorLengthMismatch` if the length of the
+    /// provided `coding_vector` does not match `self.piece_count`.
+    #[cfg(feature = "parallel")]
+    pub fn code_with_buf_coding_vector(&self, coding_vector: &[u8], out_buf: &mut [u8]) -> Result<(), RLNCError> {
+        if coding_vector.len() != self.piece_count {
+            return Err(RLNCError::CodingVectorLengthMismatch);
+        }
+
+        let coded_piece = self
+            .data
+            .par_chunks_exact(self.piece_byte_len)
+            .zip(coding_vector)
+            .map(|(piece, &random_symbol)| {
+                #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
+                {
+                    let mut scalar_x_piece = piece.to_vec();
+                    gf256_inplace_mul_vec_by_scalar(&mut scalar_x_piece, random_symbol);
+
+                    scalar_x_piece
+                }
+
+                #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
+                {
+                    piece.iter().map(move |&symbol| (Gf256::new(symbol) * Gf256::new(random_symbol)).get())
+                }
+            })
+            .fold(
+                || vec![0u8; self.piece_byte_len],
+                |mut acc, cur| {
+                    #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
+                    gf256_inplace_add_vectors(&mut acc, &cur);
+
+                    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
+                    acc.iter_mut().zip(cur).for_each(|(a, b)| {
+                        *a ^= b;
+                    });
+
+                    acc
+                },
+            )
+            .reduce(
+                || vec![0u8; self.piece_byte_len],
+                |mut acc, cur| {
+                    #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
+                    gf256_inplace_add_vectors(&mut acc, &cur);
+
+                    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
+                    acc.iter_mut().zip(cur).for_each(|(a, b)| {
+                        *a ^= b;
+                    });
+
+                    acc
+                },
+            );
+
+        // Use the out_buf to store the full coded piece
+        if out_buf.len() < self.get_full_coded_piece_byte_len() {
+            return Err(RLNCError::CodingVectorLengthMismatch);
+        }
+
+        out_buf[..self.piece_count].copy_from_slice(coding_vector);
+        out_buf[self.piece_count..].copy_from_slice(&coded_piece);
+
+        Ok(())
+    }
 
     /// Encodes the data held by the encoder using a randomly sampled coding vector.
     ///
@@ -207,7 +309,11 @@ impl Encoder {
     /// Returns the coded piece prefixed by the random coding vector.
     pub fn code<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec<u8> {
         let random_coding_vector = (0..self.piece_count).map(|_| rng.random()).collect::<Vec<u8>>();
-        unsafe { self.code_with_coding_vector(&random_coding_vector).unwrap_unchecked() }
+
+        // Allocate once outside the hot loop so we don't have to reallocate on each call
+        let mut coded_piece = vec![0u8; self.get_full_coded_piece_byte_len()];
+        unsafe { self.code_with_buf_coding_vector(&random_coding_vector, &mut coded_piece).unwrap_unchecked() }
+        coded_piece
     }
 }
 
