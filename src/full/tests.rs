@@ -79,16 +79,17 @@ fn prop_test_rlnc_encoder_recoder_decoder() {
 
             let coded_pieces = (0..num_pieces_to_recode).flat_map(|_| encoder.code(&mut rng)).collect::<Vec<u8>>();
 
-            let recoder = Recoder::new(coded_pieces, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count())
+            let mut recoder = Recoder::new(coded_pieces, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count())
                 .expect("Construction of RLNC recoder must not fail!");
 
             let num_recoded_pieces_to_use = rng.random_range(MIN_NUM_RECODED_PIECES_TO_USE..=MAX_NUM_RECODED_PIECES_TO_USE);
             let mut recoded_piece_idx = 0;
 
             while recoded_piece_idx < num_recoded_pieces_to_use {
-                let recoded_piece = recoder.recode(&mut rng);
+                let mut single_recoded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+                recoder.recode(&mut rng, &mut single_recoded_piece).unwrap();
 
-                match decoder.decode(&recoded_piece) {
+                match decoder.decode(&single_recoded_piece) {
                     Ok(_) => {}
                     Err(e) => match e {
                         RLNCError::ReceivedAllPieces => break 'OUTER,
@@ -165,13 +166,17 @@ fn prop_test_rlnc_decoding_with_useless_pieces() {
         // new pieces from previously consumed coded pieces. And those recoded pieces will all be useless, because the recoder will
         // just produce new linear combination of existing coded pieces, and they can't be linearly independent from all coded pieces
         // which were already seen by the Decoder.
-        let recoder = Recoder::new(coded_pieces_for_recoding, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count())
+        let mut recoder = Recoder::new(coded_pieces_for_recoding, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count())
             .expect("Must be able to build a Recoder");
 
         // Hence in following loop, decoding process won't progress, because all the recoded pieces will be useless.
         let num_recoded_pieces_to_use = num_pieces_to_use_for_recoding * 2;
+
+        // Allocate our recoded buffer in advance to avoid reallocations during recoding loop
+        let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+
         (0..num_recoded_pieces_to_use).for_each(|_| {
-            let coded_piece = recoder.recode(&mut rng);
+            recoder.recode(&mut rng, &mut coded_piece).unwrap();
 
             match decoder.decode(&coded_piece) {
                 Ok(_) => panic!("Decoding with linearly dependent coded piece must not succeed!"),

@@ -138,39 +138,66 @@ impl Decoder {
     /// Returns `Err(RLNCError::InvalidDecodedDataFormat)` if the extracted data
     /// does not follow the expected format (e.g., boundary marker issues).
     pub fn get_decoded_data(self) -> Result<Vec<u8>, RLNCError> {
+        let required_len = self.piece_byte_len * self.required_piece_count;
+        let mut buf = vec![0u8; required_len];
+        let final_len = self.get_decoded_data_into(&mut buf)?;
+
+        buf.truncate(final_len);
+        Ok(buf)
+    }
+
+    /// Recovers the original data and Writes it into a pre-allocated buffer.
+    ///
+    /// Returns the final length of the decoded data after removing padding.
+    ///
+    /// Use this over `get_decoded_data` when you want to avoid heap allocation
+    /// and have a pre-allocated buffer ready.
+    pub fn get_decoded_data_into(self, out_buf: &mut [u8]) -> Result<usize, RLNCError> {
         if !self.is_already_decoded() {
             return Err(RLNCError::NotAllPiecesReceivedYet);
         }
 
-        let full_coded_piece_len = self.required_piece_count + self.piece_byte_len;
-        let mut decoded_data = Vec::with_capacity(self.piece_byte_len * self.required_piece_count);
-
-        // Iterate over the useful rows (which should be the decoded original pieces)
-        // and extract the data part from each row.
-        self.matrix.extract_data().chunks_exact(full_coded_piece_len).for_each(|full_decoded_piece| {
-            // The data part of the row starts after the coefficient columns.
-            let decoded_piece = &full_decoded_piece[self.required_piece_count..];
-            decoded_data.extend_from_slice(decoded_piece);
-        });
-
-        // Find the boundary marker to trim padding.
-        let last_index_of_decoded_data = decoded_data.len() - 1;
-        let boundary_marker_rev_index = decoded_data
-            .iter()
-            .rev()
-            .position(|&byte| byte == BOUNDARY_MARKER)
-            .unwrap_or(last_index_of_decoded_data);
-        let boundary_marker_index = last_index_of_decoded_data - boundary_marker_rev_index;
-
-        if boundary_marker_index == 0 {
-            return Err(RLNCError::InvalidDecodedDataFormat);
-        }
-        if decoded_data[(boundary_marker_index + 1)..].iter().any(|&byte| byte != 0) {
-            return Err(RLNCError::InvalidDecodedDataFormat);
+        let required_len = self.piece_byte_len * self.required_piece_count;
+        if out_buf.len() < required_len {
+            return Err(RLNCError::InvalidOutputBuffer);
         }
 
-        decoded_data.truncate(boundary_marker_index);
-        Ok(decoded_data)
+        let mut current_pos = 0;
+        let full_coded_piece_len = self.get_full_coded_piece_byte_len();
+
+        // Write the decoded data piece by piece into the output buffer
+        for chunk in self.matrix.extract_data().chunks_exact(full_coded_piece_len) {
+            let payload = &chunk[self.required_piece_count..];
+            let end_pos = current_pos + self.piece_byte_len;
+            out_buf[current_pos..end_pos].copy_from_slice(payload);
+            current_pos = end_pos;
+        }
+
+        let final_len = Self::get_final_data_len(&out_buf[..current_pos])?;
+
+        // Instead of returning a Vec, we return the length of the valid data.
+        Ok(final_len)
+    }
+
+    /// Helper to find the boundary marker, validate padding,
+    /// and return the final length of the original data.
+    fn get_final_data_len(padded_data: &[u8]) -> Result<usize, RLNCError> {
+        let last_index = padded_data.len().saturating_sub(1);
+
+        let boundary_marker_rev_index = padded_data.iter().rev().position(|&byte| byte == BOUNDARY_MARKER).unwrap_or(last_index);
+
+        let boundary_marker_index = last_index - boundary_marker_rev_index;
+
+        // Perform the validation checks
+        if boundary_marker_index == 0 && !padded_data.is_empty() {
+            return Err(RLNCError::InvalidDecodedDataFormat);
+        }
+        if padded_data[(boundary_marker_index + 1)..].iter().any(|&byte| byte != 0) {
+            return Err(RLNCError::InvalidDecodedDataFormat);
+        }
+
+        // On success, return the index of the marker, which is the new length.
+        Ok(boundary_marker_index)
     }
 }
 

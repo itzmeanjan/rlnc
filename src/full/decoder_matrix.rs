@@ -66,22 +66,25 @@ impl DecoderMatrix {
     /// # Arguments
     /// * `row1_idx` - The index of the first row.
     /// * `row2_idx` - The index of the second row.
-    ///
-    /// # Panics
-    /// Panics if either row index is out of bounds.
     pub fn swap_rows(&mut self, row1_idx: usize, row2_idx: usize) -> &mut Self {
-        let row1_begins_at = row1_idx * self.cols;
-        let row1_ends_at = row1_begins_at + self.cols;
+        if row1_idx == row2_idx {
+            return self;
+        }
 
-        let row2_begins_at = row2_idx * self.cols;
-        let row2_ends_at = row2_begins_at + self.cols;
+        let (r1, r2) = if row1_idx < row2_idx { (row1_idx, row2_idx) } else { (row2_idx, row1_idx) };
 
-        let (left, right) = unsafe { self.elements.split_at_mut_unchecked(row1_ends_at) };
+        let start1 = r1 * self.cols;
+        let end1 = start1 + self.cols;
+        let start2 = r2 * self.cols;
 
-        let left_slice = &mut left[row1_begins_at..];
-        let right_slice = &mut right[(row2_begins_at - row1_ends_at)..(row2_ends_at - row1_ends_at)];
+        let (left, right) = self.elements.split_at_mut(start2);
 
-        left_slice.swap_with_slice(right_slice);
+        // row1 is in the first part
+        let row1 = &mut left[start1..end1];
+        // row2 is the beginning of the second part
+        let row2 = &mut right[..self.cols];
+
+        row1.swap_with_slice(row2);
 
         self
     }
@@ -318,5 +321,62 @@ mod test {
 
             assert_eq!(matrix, rrefed);
         });
+    }
+
+    #[test]
+    fn test_swap_rows() {
+        // Setup a deterministic 4x5 matrix for testing
+        let num_pieces = 3;
+        let piece_len = 2;
+        let mut matrix = DecoderMatrix::new(num_pieces, piece_len);
+
+        // Initial matrix content:
+        // Row 0: [1, 1, 1, 10, 10]
+        // Row 1: [2, 2, 2, 20, 20]
+        // Row 2: [3, 3, 3, 30, 30]
+        // Row 3: [4, 4, 4, 40, 40]
+        matrix.add_row(&[1, 1, 1, 10, 10]).unwrap();
+        matrix.add_row(&[2, 2, 2, 20, 20]).unwrap();
+        matrix.add_row(&[3, 3, 3, 30, 30]).unwrap();
+        matrix.add_row(&[4, 4, 4, 40, 40]).unwrap();
+
+        // Test Case 1: Standard swap (row1 < row2)
+        let mut matrix_case_1 = matrix.clone();
+        matrix_case_1.swap_rows(0, 2);
+
+        let mut expected_1 = DecoderMatrix::new(num_pieces, piece_len);
+        expected_1.add_row(&[3, 3, 3, 30, 30]).unwrap(); // Swapped from row 2
+        expected_1.add_row(&[2, 2, 2, 20, 20]).unwrap();
+        expected_1.add_row(&[1, 1, 1, 10, 10]).unwrap(); // Swapped from row 0
+        expected_1.add_row(&[4, 4, 4, 40, 40]).unwrap();
+        assert_eq!(matrix_case_1, expected_1, "Failed standard swap (0, 2)");
+
+        // Test Case 2: Reverse order swap (row1 > row2)
+        let mut matrix_case_2 = matrix.clone();
+        matrix_case_2.swap_rows(3, 1);
+
+        let mut expected_2 = DecoderMatrix::new(num_pieces, piece_len);
+        expected_2.add_row(&[1, 1, 1, 10, 10]).unwrap();
+        expected_2.add_row(&[4, 4, 4, 40, 40]).unwrap(); // Swapped from row 3
+        expected_2.add_row(&[3, 3, 3, 30, 30]).unwrap();
+        expected_2.add_row(&[2, 2, 2, 20, 20]).unwrap(); // Swapped from row 1
+        assert_eq!(matrix_case_2, expected_2, "Failed reverse order swap (3, 1)");
+
+        // Test Case 3: Identity swap (row1 == row2)
+        let mut matrix_case_3 = matrix.clone();
+        matrix_case_3.swap_rows(1, 1);
+        // The matrix should be unchanged
+        assert_eq!(matrix_case_3, matrix, "Failed identity swap (1, 1)");
+
+        // Test Case 4: Swap first and last rows
+        let mut matrix_case_4 = matrix.clone();
+        matrix_case_4.swap_rows(0, 3);
+
+        let mut expected_4 = DecoderMatrix::new(num_pieces, piece_len);
+        expected_4.add_row(&[4, 4, 4, 40, 40]).unwrap(); // Swapped from row 3
+        expected_4.add_row(&[2, 2, 2, 20, 20]).unwrap();
+        expected_4.add_row(&[3, 3, 3, 30, 30]).unwrap();
+        expected_4.add_row(&[1, 1, 1, 10, 10]).unwrap(); // Swapped from row 0
+        assert_eq!(matrix_case_4, expected_4, "Failed swap of first and last rows (0, 3)");
     }
 }

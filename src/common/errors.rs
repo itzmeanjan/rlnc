@@ -27,6 +27,8 @@ pub enum RLNCError {
     InvalidDecodedDataFormat,
     /// When the length of a received piece does not match the expected length.
     InvalidPieceLength,
+    /// The user provided an invalid output buffer for the decoder.
+    InvalidOutputBuffer,
 }
 
 impl std::fmt::Display for RLNCError {
@@ -49,6 +51,8 @@ impl std::fmt::Display for RLNCError {
             RLNCError::NotAllPiecesReceivedYet => write!(f, "Not all pieces are received yet"),
             RLNCError::InvalidDecodedDataFormat => write!(f, "Invalid decoded data format"),
             RLNCError::InvalidPieceLength => write!(f, "Invalid piece length"),
+
+            RLNCError::InvalidOutputBuffer => write!(f, "Invalid output buffer provided for coding"),
         }
     }
 }
