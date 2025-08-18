@@ -146,7 +146,7 @@ impl Decoder {
         Ok(buf)
     }
 
-    /// Recovers the original data and Writes it into a pre-allocated buffer.
+    /// Recovers the original data and writes it into a pre-allocated buffer.
     ///
     /// Returns the final length of the decoded data after removing padding.
     ///
