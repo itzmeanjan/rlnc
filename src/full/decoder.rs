@@ -188,8 +188,7 @@ impl Decoder {
 
         let boundary_marker_index = last_index - boundary_marker_rev_index;
 
-        // Perform the validation checks
-        if boundary_marker_index == 0 && !padded_data.is_empty() {
+        if boundary_marker_index == 0 {
             return Err(RLNCError::InvalidDecodedDataFormat);
         }
         if padded_data[(boundary_marker_index + 1)..].iter().any(|&byte| byte != 0) {
