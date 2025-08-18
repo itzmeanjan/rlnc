@@ -124,7 +124,11 @@ fn recode(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
 
     let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create RLNC encoder");
     let coded_pieces = (0..rlnc_config.recoding_with_piece_count)
-        .flat_map(|_| encoder.code(&mut rng))
+        .flat_map(|_| {
+            let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+            encoder.code(&mut rng, &mut coded_piece);
+            coded_piece
+        })
         .collect::<Vec<u8>>();
 
     bencher
@@ -164,7 +168,13 @@ fn recode_zero_copy(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
 
             // Generate some coded pieces to initialize the recoder.
             let num_pieces_for_recoder = rlnc_config.piece_count / 2;
-            let coded_pieces: Vec<u8> = (0..num_pieces_for_recoder).flat_map(|_| encoder.code(&mut rng)).collect();
+            let coded_pieces: Vec<u8> = (0..num_pieces_for_recoder)
+                .flat_map(|_| {
+                    let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+                    encoder.code(&mut rng, &mut coded_piece);
+                    coded_piece
+                })
+                .collect();
 
             // Create the Recoder instance. This now allocates its own internal workspace buffers.
             let recoder =

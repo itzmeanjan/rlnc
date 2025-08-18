@@ -325,13 +325,10 @@ impl Encoder {
     /// Calls `code_with_buf_coding_vector` internally.
     ///
     /// Returns the coded piece prefixed by the random coding vector.
-    pub fn code<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec<u8> {
+    pub fn code<R: Rng + ?Sized>(&self, rng: &mut R, coded_piece: &mut [u8]) {
         let random_coding_vector = (0..self.piece_count).map(|_| rng.random()).collect::<Vec<u8>>();
 
-        // Allocate once outside the hot loop so we don't have to reallocate on each call
-        let mut coded_piece = vec![0u8; self.get_full_coded_piece_byte_len()];
-        unsafe { self.code_with_buf_coding_vector(&random_coding_vector, &mut coded_piece).unwrap_unchecked() }
-        coded_piece
+        unsafe { self.code_with_buf_coding_vector(&random_coding_vector, coded_piece).unwrap_unchecked() }
     }
 }
 

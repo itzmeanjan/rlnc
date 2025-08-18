@@ -38,11 +38,10 @@ fn main() {
     // 4. Simulate a sender generating initial coded pieces
     let num_initial_coded_pieces_from_sender = encoder.get_piece_count() / 2; // Send half directly
     println!("\nSender generating {num_initial_coded_pieces_from_sender} initial coded pieces...");
-    let mut pieces_for_recoder = Vec::new();
+    let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
 
     for i in 0..num_initial_coded_pieces_from_sender {
-        let coded_piece = encoder.code(&mut rng);
-        pieces_for_recoder.extend_from_slice(&coded_piece); // Collect the same coded piece for recoder
+        encoder.code(&mut rng, &mut coded_piece);
 
         match decoder.decode(&coded_piece) {
             Ok(_) => println!("  Decoded direct piece {}: Useful.", i + 1),
@@ -56,9 +55,8 @@ fn main() {
     }
 
     // 5. Initialize the Recoder with same coded pieces which were already used for decoding
-    println!("\nInitializing Recoder with {} bytes of received coded pieces.", pieces_for_recoder.len());
-    let mut recoder =
-        Recoder::new(pieces_for_recoder, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC recoder");
+    println!("\nInitializing Recoder with {} bytes of received coded pieces.", coded_piece.len());
+    let mut recoder = Recoder::new(coded_piece, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC recoder");
 
     // 6. Generate recoded pieces and feed them to the decoder, though all of the recoded pieces will be linearly dependent on the original pieces
     println!("\nRecoder active. Generating recoded pieces...");
@@ -87,18 +85,14 @@ fn main() {
     }
 
     // 7. Generate new coded pieces for recoding, so that we can actually demonstrate the power of recoding in RLNC
-    let mut pieces_for_new_recoder = Vec::new();
+    let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
     for _ in 0..num_initial_coded_pieces_from_sender {
-        let coded_piece = encoder.code(&mut rng);
-        pieces_for_new_recoder.extend_from_slice(&coded_piece); // Collect for new recoder
+        encoder.code(&mut rng, &mut coded_piece);
     }
 
-    println!(
-        "\nInitializing a new Recoder with {} bytes of received coded pieces.",
-        pieces_for_new_recoder.len()
-    );
+    println!("\nInitializing a new Recoder with {} bytes of received coded pieces.", coded_piece.len());
     let mut recoder =
-        Recoder::new(pieces_for_new_recoder, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Must be able to build a new recoder");
+        Recoder::new(coded_piece, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Must be able to build a new recoder");
 
     // 8. Generate new recoded pieces and feed them to the decoder. Now most of these recoded pieces will be useful, as these pieces were never seen by the decoder before.
     let num_recoded_pieces_to_send = num_initial_coded_pieces_from_sender / 2; // Send some recoded pieces for decoding
@@ -123,9 +117,10 @@ fn main() {
 
     // 9. If not yet decoded, continue generating direct coded pieces from encoder
     let mut direct_piece_count = num_initial_coded_pieces_from_sender;
+    let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
     while !decoder.is_already_decoded() {
         println!("\nStill need more pieces. Generating direct piece {} from encoder...", direct_piece_count + 1);
-        let coded_piece = encoder.code(&mut rng);
+        encoder.code(&mut rng, &mut coded_piece);
 
         match decoder.decode(&coded_piece) {
             Ok(_) => {

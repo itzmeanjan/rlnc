@@ -113,7 +113,11 @@ fn encode(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
             encoder.get_full_coded_piece_byte_len(), // Number of bytes for each coded piece
         ))
         .with_inputs(rand::rng)
-        .bench_refs(|rng| divan::black_box(&encoder).code(divan::black_box(rng)));
+        .bench_refs(|rng| {
+            let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+            encoder.code(divan::black_box(rng), &mut coded_piece);
+            divan::black_box(&mut coded_piece);
+        });
 }
 
 #[divan::bench(args = ARGS, max_time = Duration::from_secs(100), skip_ext_time = true)]

@@ -66,10 +66,14 @@
 //!
 //! // 3. Initialize the Decoder
 //! let mut decoder = Decoder::new(encoder.get_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC decoder");
+//! // Prepare a buffer for receiving coded pieces
+//! // This buffer should be large enough to hold a single coded piece.
+//! // The size of a coded piece is determined by the encoder.
+//! let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
 //!
 //! // 4. Generate coded pieces and feed them to the decoder until decoding is complete
 //! while !decoder.is_already_decoded() {
-//!     let coded_piece = encoder.code(&mut rng);
+//!     encoder.code(&mut rng, &mut coded_piece);
 //!
 //!     match decoder.decode(&coded_piece) {
 //!         Ok(_) => {},                                // Piece was useful

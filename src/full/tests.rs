@@ -26,8 +26,9 @@ fn prop_test_rlnc_encoder_decoder() {
         let encoder = Encoder::new(data, piece_count).expect("Failed to create Encoder");
         let mut decoder = Decoder::new(encoder.get_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create Decoder");
 
+        let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
         loop {
-            let coded_piece = encoder.code(&mut rng);
+            encoder.code(&mut rng, &mut coded_piece);
 
             match decoder.decode(&coded_piece) {
                 Ok(_) => {}
@@ -77,7 +78,13 @@ fn prop_test_rlnc_encoder_recoder_decoder() {
         'OUTER: loop {
             let num_pieces_to_recode = rng.random_range(MIN_NUM_PIECES_TO_RECODE..=MAX_NUM_PIECES_TO_RECODE);
 
-            let coded_pieces = (0..num_pieces_to_recode).flat_map(|_| encoder.code(&mut rng)).collect::<Vec<u8>>();
+            let coded_pieces = (0..num_pieces_to_recode)
+                .flat_map(|_| {
+                    let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+                    encoder.code(&mut rng, &mut coded_piece);
+                    coded_piece
+                })
+                .collect::<Vec<u8>>();
 
             let mut recoder = Recoder::new(coded_pieces, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count())
                 .expect("Construction of RLNC recoder must not fail!");
@@ -101,7 +108,8 @@ fn prop_test_rlnc_encoder_recoder_decoder() {
                 recoded_piece_idx += 1;
             }
 
-            let coded_piece = encoder.code(&mut rng);
+            let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+            encoder.code(&mut rng, &mut coded_piece);
             match decoder.decode(&coded_piece) {
                 Ok(_) => {}
                 Err(e) => match e {
@@ -149,7 +157,8 @@ fn prop_test_rlnc_decoding_with_useless_pieces() {
 
         // Generate some coded pieces, push them into Decoder and keep their copy so that they can be used for recoding.
         (0..num_pieces_to_use_for_recoding).for_each(|_| {
-            let coded_piece = encoder.code(&mut rng);
+            let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+            encoder.code(&mut rng, &mut coded_piece);
 
             match decoder.decode(&coded_piece) {
                 Ok(_) => coded_pieces_for_recoding.extend_from_slice(&coded_piece),
@@ -189,7 +198,8 @@ fn prop_test_rlnc_decoding_with_useless_pieces() {
 
         // Finally, we can grab new coded pieces from directly the Encoder to finalize the decoding process.
         while decoder.get_remaining_piece_count() > 0 {
-            let coded_piece = encoder.code(&mut rng);
+            let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+            encoder.code(&mut rng, &mut coded_piece);
 
             match decoder.decode(&coded_piece) {
                 Ok(_) => {}
