@@ -150,7 +150,7 @@ impl Encoder {
         }
 
         if out_buf.len() < self.get_full_coded_piece_byte_len() {
-            return Err(RLNCError::CodingVectorLengthMismatch);
+            return Err(RLNCError::InvalidOutputBuffer);
         }
 
         // We will use the out_buf by using `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices
@@ -256,7 +256,7 @@ impl Encoder {
         }
 
         if out_buf.len() < self.get_full_coded_piece_byte_len() {
-            return Err(RLNCError::CodingVectorLengthMismatch);
+            return Err(RLNCError::InvalidOutputBuffer);
         }
 
         let coded_piece = self
@@ -308,7 +308,7 @@ impl Encoder {
 
         // Use the out_buf to store the full coded piece
         if out_buf.len() < self.get_full_coded_piece_byte_len() {
-            return Err(RLNCError::CodingVectorLengthMismatch);
+            return Err(RLNCError::InvalidOutputBuffer);
         }
 
         out_buf[..self.piece_count].copy_from_slice(coding_vector);
