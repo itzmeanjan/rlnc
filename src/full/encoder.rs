@@ -107,7 +107,7 @@ impl Encoder {
     ///
     /// The resulting coded piece is returned as a `Vec<u8>`, prefixed by the
     /// coding vector itself (as `u8` values). The total length of the returned
-    /// vector is `self.get_complete_coded_piece_byte_len()`.
+    /// vector is `self.get_full_coded_piece_byte_len()`.
     ///
     /// Returns `RLNCError::CodingVectorLengthMismatch` if the length of the
     /// provided `coding_vector` does not match `self.piece_count`.
@@ -133,7 +133,7 @@ impl Encoder {
     ///
     /// The resulting coded piece is written into the provided output buffer `out_buf`,
     /// coding vector itself (as `u8` values). The total length of the returned
-    /// vector is `self.get_complete_coded_piece_byte_len()`.
+    /// vector is `self.get_full_coded_piece_byte_len()`.
     ///
     /// Returns `RLNCError::CodingVectorLengthMismatch` if the length of the
     /// provided `coding_vector` does not match `self.piece_count`.
