@@ -255,6 +255,10 @@ impl Encoder {
             return Err(RLNCError::CodingVectorLengthMismatch);
         }
 
+        if out_buf.len() < self.get_full_coded_piece_byte_len() {
+            return Err(RLNCError::CodingVectorLengthMismatch);
+        }
+
         let coded_piece = self
             .data
             .par_chunks_exact(self.piece_byte_len)
