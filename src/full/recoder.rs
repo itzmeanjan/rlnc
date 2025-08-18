@@ -130,6 +130,7 @@ impl Recoder {
     /// # Arguments
     ///
     /// * `rng`: Used to sample the random recoding vector.
+    /// * `full_recoded_piece`: A mutable slice of bytes where the new coded piece will be written.
     ///
     /// # Returns
     ///
