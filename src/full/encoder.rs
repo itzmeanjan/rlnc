@@ -111,6 +111,12 @@ impl Encoder {
     ///
     /// Returns `RLNCError::CodingVectorLengthMismatch` if the length of the
     /// provided `coding_vector` does not match `self.piece_count`.
+    ///
+    /// # Deprecated
+    /// Use the allocation friendly `code_with_buf_coding_vector` instead.
+    /// This method is deprecated due to performance and memory usage concerns.
+    /// It uses a vector allocation for each coded piece, which can be inefficient.
+    #[deprecated(since = "0.9.0", note = "Use `code_with_buf_coding_vector` instead for better performance and memory usage.")]
     #[cfg(not(feature = "parallel"))]
     pub fn code_with_coding_vector(&self, coding_vector: &[u8]) -> Result<Vec<u8>, RLNCError> {
         if coding_vector.len() != self.piece_count {
@@ -312,7 +318,7 @@ impl Encoder {
     /// A coding vector of `self.piece_count` random `Gf256` symbols is generated
     /// using the provided random number generator.
     ///
-    /// Calls `code_with_coding_vector` internally.
+    /// Calls `code_with_buf_coding_vector` internally.
     ///
     /// Returns the coded piece prefixed by the random coding vector.
     pub fn code<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec<u8> {
