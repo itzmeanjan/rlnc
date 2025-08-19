@@ -242,13 +242,7 @@ mod tests {
 
         // Test case 5: Valid input (using existing encoder setup to generate valid data)
         let num_pieces_to_recode_with = 5;
-        let coded_pieces_for_recoder: Vec<u8> = (0..num_pieces_to_recode_with)
-            .flat_map(|_| {
-                let mut coded_piece = vec![0u8; full_coded_piece_byte_len];
-                encoder.code(&mut rng, &mut coded_piece);
-                coded_piece
-            })
-            .collect();
+        let coded_pieces_for_recoder: Vec<u8> = (0..num_pieces_to_recode_with).flat_map(|_| encoder.code(&mut rng)).collect();
 
         let result_valid = Recoder::new(coded_pieces_for_recoder, full_coded_piece_byte_len, num_pieces_coded_together);
         assert!(result_valid.is_ok());
@@ -270,13 +264,7 @@ mod tests {
         let full_coded_piece_byte_len = encoder.get_full_coded_piece_byte_len();
         let original_piece_byte_len = encoder.get_piece_byte_len();
 
-        let coded_pieces_for_recoder: Vec<u8> = (0..num_pieces_to_recode_with)
-            .flat_map(|_| {
-                let mut coded_piece = vec![0u8; full_coded_piece_byte_len];
-                encoder.code(&mut rng, &mut coded_piece);
-                coded_piece
-            })
-            .collect();
+        let coded_pieces_for_recoder: Vec<u8> = (0..num_pieces_to_recode_with).flat_map(|_| encoder.code(&mut rng)).collect();
 
         let recoder = Recoder::new(
             coded_pieces_for_recoder,

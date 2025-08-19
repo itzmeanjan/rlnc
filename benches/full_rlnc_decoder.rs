@@ -111,13 +111,7 @@ fn decode(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
     let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create RLNC encoder");
 
     let num_pieces_to_produce = rlnc_config.piece_count * 2;
-    let coded_pieces = (0..num_pieces_to_produce)
-        .flat_map(|_| {
-            let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
-            encoder.code(&mut rng, &mut coded_piece);
-            coded_piece
-        })
-        .collect::<Vec<u8>>();
+    let coded_pieces = (0..num_pieces_to_produce).flat_map(|_| encoder.code(&mut rng)).collect::<Vec<u8>>();
 
     bencher
         .with_inputs(|| Decoder::new(encoder.get_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC decoder"))

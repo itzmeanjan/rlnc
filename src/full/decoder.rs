@@ -292,9 +292,8 @@ mod tests {
         assert!(!decoder.is_already_decoded());
 
         // Test case 4: Valid coded piece - check if state changes
-        let mut coded_piece = vec![0u8; full_coded_piece_byte_len];
-        encoder.code(&mut rng, &mut coded_piece);
-        let result_correct = decoder.decode(&coded_piece);
+        let correct_coded_piece = encoder.code(&mut rng);
+        let result_correct = decoder.decode(&correct_coded_piece);
         assert!(result_correct.is_ok() || matches!(result_correct, Err(RLNCError::PieceNotUseful)));
 
         // After a valid decode attempt, received_piece_count must increase
@@ -336,10 +335,9 @@ mod tests {
         // Add some pieces and track useful ones
         let num_pieces_to_decode_initially = required_piece_count / 2;
         let mut expected_useful_pieces_after_initial = 0;
-        let mut coded_piece = vec![0u8; full_coded_piece_byte_len];
 
         for _ in 0..num_pieces_to_decode_initially {
-            encoder.code(&mut rng, &mut coded_piece);
+            let coded_piece = encoder.code(&mut rng);
             match decoder.decode(&coded_piece) {
                 Ok(_) => {
                     expected_useful_pieces_after_initial += 1;
@@ -355,9 +353,8 @@ mod tests {
 
         // Add remaining pieces to complete decoding
         let mut total_pieces_received = num_pieces_to_decode_initially;
-        let mut coded_piece = vec![0u8; full_coded_piece_byte_len];
         while !decoder.is_already_decoded() {
-            encoder.code(&mut rng, &mut coded_piece);
+            let coded_piece = encoder.code(&mut rng);
 
             match decoder.decode(&coded_piece) {
                 Ok(_) => {}
