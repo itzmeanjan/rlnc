@@ -144,7 +144,7 @@ fn encode_zero_copy(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
     let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
 
     bencher.bench_local(|| {
-        encoder.code_with_buf_coding_vector(&coding_vector, &mut coded_piece).unwrap();
+        encoder.code_with_buf(&coding_vector, &mut coded_piece).unwrap();
         divan::black_box(&mut coded_piece);
     });
 }

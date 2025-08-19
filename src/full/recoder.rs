@@ -161,7 +161,7 @@ impl Recoder {
 
         unsafe {
             self.encoder
-                .code_with_buf_coding_vector(&self.random_recoding_vector, &mut self.encoder_output_buf)
+                .code_with_buf(&self.random_recoding_vector, &mut self.encoder_output_buf)
                 .unwrap_unchecked()
         };
         let coded_piece = &self.encoder_output_buf[self.num_pieces_received..];
