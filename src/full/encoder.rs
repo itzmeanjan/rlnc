@@ -119,19 +119,8 @@ impl Encoder {
     #[deprecated(since = "0.9.0", note = "Use `code_with_buf` instead for better performance and memory usage.")]
     #[cfg(not(feature = "parallel"))]
     pub fn code_with_coding_vector(&self, coding_vector: &[u8]) -> Result<Vec<u8>, RLNCError> {
-        if coding_vector.len() != self.piece_count {
-            return Err(RLNCError::CodingVectorLengthMismatch);
-        }
-
         let mut full_coded_piece = vec![0u8; self.get_full_coded_piece_byte_len()];
-        full_coded_piece[..self.piece_count].copy_from_slice(coding_vector);
-
-        let coded_piece = &mut full_coded_piece[self.piece_count..];
-        self.data
-            .chunks_exact(self.piece_byte_len)
-            .zip(coding_vector)
-            .for_each(|(piece, &random_symbol)| gf256_mul_vec_by_scalar_then_add_into_vec(coded_piece, piece, random_symbol));
-
+        self.code_with_buf(coding_vector, &mut full_coded_piece)?;
         Ok(full_coded_piece)
     }
 
@@ -155,7 +144,7 @@ impl Encoder {
 
         // We will use the out_buf by using `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices
         let (coding_vector_buf, coded_piece_buf) = out_buf.split_at_mut(self.piece_count);
-        coding_vector_buf[..self.piece_count].copy_from_slice(coding_vector);
+        coding_vector_buf.copy_from_slice(coding_vector);
         coded_piece_buf.fill(0); // Initialize the coded piece buffer to zero
 
         self.data
@@ -184,63 +173,11 @@ impl Encoder {
     #[deprecated(since = "0.9.0", note = "Use `code_with_buf` instead for better performance and memory usage.")]
     #[cfg(feature = "parallel")]
     pub fn code_with_coding_vector(&self, coding_vector: &[u8]) -> Result<Vec<u8>, RLNCError> {
-        if coding_vector.len() != self.piece_count {
-            return Err(RLNCError::CodingVectorLengthMismatch);
-        }
-
-        let coded_piece = self
-            .data
-            .par_chunks_exact(self.piece_byte_len)
-            .zip(coding_vector)
-            .map(|(piece, &random_symbol)| {
-                #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
-                {
-                    let mut scalar_x_piece = piece.to_vec();
-                    gf256_inplace_mul_vec_by_scalar(&mut scalar_x_piece, random_symbol);
-
-                    scalar_x_piece
-                }
-
-                #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
-                {
-                    piece.iter().map(move |&symbol| (Gf256::new(symbol) * Gf256::new(random_symbol)).get())
-                }
-            })
-            .fold(
-                || vec![0u8; self.piece_byte_len],
-                |mut acc, cur| {
-                    #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
-                    gf256_inplace_add_vectors(&mut acc, &cur);
-
-                    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
-                    acc.iter_mut().zip(cur).for_each(|(a, b)| {
-                        *a ^= b;
-                    });
-
-                    acc
-                },
-            )
-            .reduce(
-                || vec![0u8; self.piece_byte_len],
-                |mut acc, cur| {
-                    #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
-                    gf256_inplace_add_vectors(&mut acc, &cur);
-
-                    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
-                    acc.iter_mut().zip(cur).for_each(|(a, b)| {
-                        *a ^= b;
-                    });
-
-                    acc
-                },
-            );
-
         let mut full_coded_piece = vec![0u8; self.get_full_coded_piece_byte_len()];
-        full_coded_piece[..self.piece_count].copy_from_slice(coding_vector);
-        full_coded_piece[self.piece_count..].copy_from_slice(&coded_piece);
-
+        self.code_with_buf(coding_vector, &mut full_coded_piece)?;
         Ok(full_coded_piece)
     }
+
     /// Encodes the data held by the encoder using a provided coding vector.
     ///
     /// The resulting coded piece is written into the provided output buffer `out_buf`,
