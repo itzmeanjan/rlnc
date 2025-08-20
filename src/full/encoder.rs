@@ -107,28 +107,56 @@ impl Encoder {
     ///
     /// The resulting coded piece is returned as a `Vec<u8>`, prefixed by the
     /// coding vector itself (as `u8` values). The total length of the returned
-    /// vector is `self.get_complete_coded_piece_byte_len()`.
+    /// vector is `self.get_full_coded_piece_byte_len()`.
+    ///
+    /// Returns `RLNCError::CodingVectorLengthMismatch` if the length of the
+    /// provided `coding_vector` does not match `self.piece_count`.
+    ///
+    /// # Deprecated
+    /// Use the allocation friendly `code_with_buf` instead.
+    /// This method is deprecated due to performance and memory usage concerns.
+    /// It uses a vector allocation for each coded piece, which can be inefficient.
+    #[deprecated(since = "0.9.0", note = "Use `code_with_buf` instead for better performance and memory usage.")]
+    #[cfg(not(feature = "parallel"))]
+    pub fn code_with_coding_vector(&self, coding_vector: &[u8]) -> Result<Vec<u8>, RLNCError> {
+        let mut full_coded_piece = vec![0u8; self.get_full_coded_piece_byte_len()];
+        self.code_with_buf(coding_vector, &mut full_coded_piece)?;
+        Ok(full_coded_piece)
+    }
+
+    /// Encodes the data held by the encoder using a provided coding vector.
+    ///
+    /// The resulting coded piece is written into the provided output buffer `out_buf`,
+    /// coding vector itself (as `u8` values). The total length of the returned
+    /// vector is `self.get_full_coded_piece_byte_len()`.
     ///
     /// Returns `RLNCError::CodingVectorLengthMismatch` if the length of the
     /// provided `coding_vector` does not match `self.piece_count`.
     #[cfg(not(feature = "parallel"))]
-    pub fn code_with_coding_vector(&self, coding_vector: &[u8]) -> Result<Vec<u8>, RLNCError> {
+    pub fn code_with_buf(&self, coding_vector: &[u8], out_buf: &mut [u8]) -> Result<(), RLNCError> {
         if coding_vector.len() != self.piece_count {
             return Err(RLNCError::CodingVectorLengthMismatch);
         }
 
-        let mut full_coded_piece = vec![0u8; self.get_full_coded_piece_byte_len()];
-        full_coded_piece[..self.piece_count].copy_from_slice(coding_vector);
+        if out_buf.len() < self.get_full_coded_piece_byte_len() {
+            return Err(RLNCError::InvalidOutputBuffer);
+        }
 
-        let coded_piece = &mut full_coded_piece[self.piece_count..];
+        // We will use the out_buf by using `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices
+        let (coding_vector_buf, coded_piece_buf) = out_buf.split_at_mut(self.piece_count);
+        coding_vector_buf.copy_from_slice(coding_vector);
+        coded_piece_buf.fill(0); // Initialize the coded piece buffer to zero
+
         self.data
             .chunks_exact(self.piece_byte_len)
             .zip(coding_vector)
-            .for_each(|(piece, &random_symbol)| gf256_mul_vec_by_scalar_then_add_into_vec(coded_piece, piece, random_symbol));
+            .for_each(|(piece, &random_symbol)| gf256_mul_vec_by_scalar_then_add_into_vec(coded_piece_buf, piece, random_symbol));
 
-        Ok(full_coded_piece)
+        Ok(())
     }
 
+    /// This function is deprecated.
+    ///
     /// Encodes the data held by the encoder using a provided coding vector.
     ///
     /// The resulting coded piece is returned as a `Vec<u8>`, prefixed by the
@@ -137,10 +165,35 @@ impl Encoder {
     ///
     /// Returns `RLNCError::CodingVectorLengthMismatch` if the length of the
     /// provided `coding_vector` does not match `self.piece_count`.
+    ///
+    /// # Deprecated
+    /// Use the allocation friendly `code_with_buf` instead.
+    /// This method is deprecated due to performance and memory usage concerns.
+    /// It uses a vector allocation for each coded piece, which can be inefficient.
+    #[deprecated(since = "0.9.0", note = "Use `code_with_buf` instead for better performance and memory usage.")]
     #[cfg(feature = "parallel")]
     pub fn code_with_coding_vector(&self, coding_vector: &[u8]) -> Result<Vec<u8>, RLNCError> {
+        let mut full_coded_piece = vec![0u8; self.get_full_coded_piece_byte_len()];
+        self.code_with_buf(coding_vector, &mut full_coded_piece)?;
+        Ok(full_coded_piece)
+    }
+
+    /// Encodes the data held by the encoder using a provided coding vector.
+    ///
+    /// The resulting coded piece is written into the provided output buffer `out_buf`,
+    /// prefixed by the coding vector itself (as `u8` values). The total
+    /// length of the output buffer is `self.get_complete_coded_piece_byte_len()`.
+    ///
+    /// Returns `RLNCError::CodingVectorLengthMismatch` if the length of the
+    /// provided `coding_vector` does not match `self.piece_count`.
+    #[cfg(feature = "parallel")]
+    pub fn code_with_buf(&self, coding_vector: &[u8], out_buf: &mut [u8]) -> Result<(), RLNCError> {
         if coding_vector.len() != self.piece_count {
             return Err(RLNCError::CodingVectorLengthMismatch);
+        }
+
+        if out_buf.len() < self.get_full_coded_piece_byte_len() {
+            return Err(RLNCError::InvalidOutputBuffer);
         }
 
         let coded_piece = self
@@ -190,24 +243,34 @@ impl Encoder {
                 },
             );
 
-        let mut full_coded_piece = vec![0u8; self.get_full_coded_piece_byte_len()];
-        full_coded_piece[..self.piece_count].copy_from_slice(coding_vector);
-        full_coded_piece[self.piece_count..].copy_from_slice(&coded_piece);
+        // Use the out_buf to store the full coded piece
+        if out_buf.len() < self.get_full_coded_piece_byte_len() {
+            return Err(RLNCError::InvalidOutputBuffer);
+        }
 
-        Ok(full_coded_piece)
+        out_buf[..self.piece_count].copy_from_slice(coding_vector);
+        out_buf[self.piece_count..].copy_from_slice(&coded_piece);
+
+        Ok(())
     }
 
     /// Encodes the data held by the encoder using a randomly sampled coding vector.
     ///
+    /// Convenience methods which allocates then calls `code_with_buf` internally,
+    /// which allows the caller to assign the output buffer. If you want to control
+    /// the allocation, use `code_with_buf` directly instead of this method.
+    ///
     /// A coding vector of `self.piece_count` random `Gf256` symbols is generated
     /// using the provided random number generator.
-    ///
-    /// Calls `code_with_coding_vector` internally.
     ///
     /// Returns the coded piece prefixed by the random coding vector.
     pub fn code<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec<u8> {
         let random_coding_vector = (0..self.piece_count).map(|_| rng.random()).collect::<Vec<u8>>();
-        unsafe { self.code_with_coding_vector(&random_coding_vector).unwrap_unchecked() }
+
+        // Allocate once outside the hot loop so we don't have to reallocate on each call
+        let mut coded_piece = vec![0u8; self.get_full_coded_piece_byte_len()];
+        unsafe { self.code_with_buf(&random_coding_vector, &mut coded_piece).unwrap_unchecked() }
+        coded_piece
     }
 }
 
@@ -311,7 +374,8 @@ mod tests {
         // Test case 1: Coding vector is shorter than expected
         let short_coding_vector_len = piece_count - 1;
         let short_coding_vector: Vec<u8> = (0..short_coding_vector_len).map(|_| rng.random()).collect();
-        let result_short = encoder.code_with_coding_vector(&short_coding_vector);
+        let mut buf_short_coding_vector = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+        let result_short = encoder.code_with_buf(&short_coding_vector, &mut buf_short_coding_vector);
 
         assert!(result_short.is_err());
         assert_eq!(
@@ -322,7 +386,7 @@ mod tests {
         // Test case 2: Coding vector is longer than expected
         let long_coding_vector_len = piece_count + 1;
         let long_coding_vector: Vec<u8> = (0..long_coding_vector_len).map(|_| rng.random()).collect();
-        let result_long = encoder.code_with_coding_vector(&long_coding_vector);
+        let result_long = encoder.code_with_buf(&long_coding_vector, &mut vec![0u8; encoder.get_full_coded_piece_byte_len()]);
 
         assert!(result_long.is_err());
         assert_eq!(
@@ -332,7 +396,7 @@ mod tests {
 
         // Test case 3: Empty coding vector
         let empty_coding_vector: Vec<u8> = Vec::new();
-        let result_empty = encoder.code_with_coding_vector(&empty_coding_vector);
+        let result_empty = encoder.code_with_buf(&empty_coding_vector, &mut vec![0u8; encoder.get_full_coded_piece_byte_len()]);
 
         assert!(result_empty.is_err());
         assert_eq!(
@@ -342,13 +406,11 @@ mod tests {
 
         // Test case 4: Valid coding vector
         let valid_coding_vector: Vec<u8> = (0..piece_count).map(|_| rng.random()).collect();
-        let result_valid = encoder.code_with_coding_vector(&valid_coding_vector);
+        let mut buf_valid_coding_vector = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+        let result_valid = encoder.code_with_buf(&valid_coding_vector, &mut buf_valid_coding_vector);
 
         assert!(result_valid.is_ok());
-        assert_eq!(
-            result_valid.expect("Expected a valid coded piece").len(),
-            encoder.get_full_coded_piece_byte_len()
-        );
+        assert_eq!(buf_valid_coding_vector.len(), encoder.get_full_coded_piece_byte_len());
     }
 
     #[test]

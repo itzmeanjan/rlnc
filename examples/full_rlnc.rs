@@ -23,6 +23,10 @@ fn main() {
         encoder.get_full_coded_piece_byte_len()
     );
 
+    // Show the overhead of encodng as a % on top of the original data size
+    let overhead = (encoder.get_full_coded_piece_byte_len() * piece_count) as f64 / original_data_len as f64 * 100.0 - 100.0;
+    println!("Overhead of encoding: {overhead:.2}%");
+
     // 3. Initialize the Decoder
     println!(
         "Initializing Decoder, expecting {} original pieces of {} bytes each.",
@@ -53,11 +57,15 @@ fn main() {
 
     // 5. Initialize the Recoder with same coded pieces which were already used for decoding
     println!("\nInitializing Recoder with {} bytes of received coded pieces.", pieces_for_recoder.len());
-    let recoder = Recoder::new(pieces_for_recoder, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC recoder");
+    let mut recoder =
+        Recoder::new(pieces_for_recoder, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC recoder");
 
     // 6. Generate recoded pieces and feed them to the decoder, though all of the recoded pieces will be linearly dependent on the original pieces
     println!("\nRecoder active. Generating recoded pieces...");
     let num_recoded_pieces_to_send = encoder.get_piece_count() * 2; // Send many recoded pieces, though all of them will be useless
+    // Allocate in advance for the full_recoded_piece
+    let mut recoded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+
     for i in 0..num_recoded_pieces_to_send {
         // This condition will never be executed because the decoder will not see a single useful coded piece while executing inside this loop
         if decoder.is_already_decoded() {
@@ -65,7 +73,7 @@ fn main() {
             break;
         }
 
-        let recoded_piece = recoder.recode(&mut rng);
+        recoder.recode(&mut rng, &mut recoded_piece).unwrap();
 
         match decoder.decode(&recoded_piece) {
             Ok(_) => println!("  Decoded recoded piece {}: Useful.", i + 1),
@@ -89,7 +97,7 @@ fn main() {
         "\nInitializing a new Recoder with {} bytes of received coded pieces.",
         pieces_for_new_recoder.len()
     );
-    let recoder =
+    let mut recoder =
         Recoder::new(pieces_for_new_recoder, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Must be able to build a new recoder");
 
     // 8. Generate new recoded pieces and feed them to the decoder. Now most of these recoded pieces will be useful, as these pieces were never seen by the decoder before.
@@ -100,7 +108,7 @@ fn main() {
             break;
         }
 
-        let recoded_piece = recoder.recode(&mut rng);
+        recoder.recode(&mut rng, &mut recoded_piece).expect("Failed to recode piece");
 
         match decoder.decode(&recoded_piece) {
             Ok(_) => println!("  Decoded recoded piece {}: Useful.", i + 1),

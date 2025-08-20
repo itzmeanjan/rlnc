@@ -17,6 +17,12 @@ pub struct Recoder {
     num_pieces_received: usize,
     full_coded_piece_byte_len: usize,
     num_pieces_coded_together: usize,
+    /// A temporary buffer to hold the random recoding vector during the recoding process.
+    /// This avoids repeated allocations on each recoding operation.
+    random_recoding_vector: Vec<u8>,
+    /// A temporary buffer to hold the output of the encoder during the recoding process.
+    /// This avoids repeated allocations on each recoding operation.
+    encoder_output_buf: Vec<u8>,
 }
 
 impl Recoder {
@@ -95,12 +101,18 @@ impl Recoder {
 
         let encoder = unsafe { Encoder::without_padding(coded_pieces, num_pieces_received).unwrap_unchecked() };
 
+        // Pre-allocate internal workspace buffers to avoid repeated allocations during recoding.
+        let random_recoding_vector = vec![0u8; num_pieces_received];
+        let encoder_output_buf = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+
         Ok(Recoder {
             coding_vectors,
             encoder,
             num_pieces_received,
             full_coded_piece_byte_len,
             num_pieces_coded_together,
+            random_recoding_vector,
+            encoder_output_buf,
         })
     }
 
@@ -118,39 +130,45 @@ impl Recoder {
     /// # Arguments
     ///
     /// * `rng`: Used to sample the random recoding vector.
+    /// * `full_recoded_piece`: A mutable slice of bytes where the new coded piece will be written.
     ///
     /// # Returns
     ///
     /// Returns a `Vec<u8>` representing the new coded piece prepended with its
     /// source coding vector. The length of the returned vector is
     /// `self.get_full_coded_piece_byte_len()`.
-    pub fn recode<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec<u8> {
-        let random_recoding_vector = (0..self.num_pieces_received).map(|_| rng.random()).collect::<Vec<u8>>();
+    pub fn recode<R: Rng + ?Sized>(&mut self, rng: &mut R, full_recoded_piece: &mut [u8]) -> Result<(), RLNCError> {
+        if full_recoded_piece.len() != self.full_coded_piece_byte_len {
+            return Err(RLNCError::InvalidOutputBuffer);
+        }
+
+        rng.fill_bytes(&mut self.random_recoding_vector);
 
         // Compute the resulting coding vector for the original source pieces
         // by multiplying the random sampled recoding vector by the matrix of received coding vectors.
-        let computed_coding_vector = (0..self.num_pieces_coded_together)
-            .map(|coeff_idx| {
-                random_recoding_vector
-                    .iter()
-                    .enumerate()
-                    .fold(Gf256::default(), |acc, (recoding_vec_idx, &cur)| {
-                        let row_begins_at = recoding_vec_idx * self.num_pieces_coded_together;
-                        acc + Gf256::new(cur) * self.coding_vectors[row_begins_at + coeff_idx]
-                    })
-                    .get()
-            })
-            .collect::<Vec<u8>>();
+        let (computed_cv_slice, _) = full_recoded_piece.split_at_mut(self.num_pieces_coded_together);
+        for (coeff_idx, item) in computed_cv_slice.iter_mut().enumerate().take(self.num_pieces_coded_together) {
+            let computed_coeff = self
+                .random_recoding_vector
+                .iter()
+                .enumerate()
+                .fold(Gf256::default(), |acc, (recoding_vec_idx, &cur)| {
+                    let row_begins_at = recoding_vec_idx * self.num_pieces_coded_together;
+                    acc + Gf256::new(cur) * self.coding_vectors[row_begins_at + coeff_idx]
+                });
+            *item = computed_coeff.get();
+        }
 
-        let full_coded_piece = unsafe { self.encoder.code_with_coding_vector(&random_recoding_vector).unwrap_unchecked() };
-        let coded_piece = &full_coded_piece[self.num_pieces_received..];
+        unsafe {
+            self.encoder
+                .code_with_buf(&self.random_recoding_vector, &mut self.encoder_output_buf)
+                .unwrap_unchecked()
+        };
+        let coded_piece = &self.encoder_output_buf[self.num_pieces_received..];
 
-        let mut full_recoded_piece = vec![0u8; self.full_coded_piece_byte_len];
-
-        full_recoded_piece[..self.num_pieces_coded_together].copy_from_slice(&computed_coding_vector);
         full_recoded_piece[self.num_pieces_coded_together..].copy_from_slice(coded_piece);
 
-        full_recoded_piece
+        Ok(())
     }
 }
 
