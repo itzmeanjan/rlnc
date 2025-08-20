@@ -138,29 +138,12 @@ impl Decoder {
     /// Returns `Err(RLNCError::InvalidDecodedDataFormat)` if the extracted data
     /// does not follow the expected format (e.g., boundary marker issues).
     pub fn get_decoded_data(self) -> Result<Vec<u8>, RLNCError> {
-        let required_len = self.piece_byte_len * self.required_piece_count;
-        let mut buf = vec![0u8; required_len];
-        let final_len = self.get_decoded_data_into(&mut buf)?;
-
-        buf.truncate(final_len);
-        Ok(buf)
-    }
-
-    /// Recovers the original data and writes it into a pre-allocated buffer.
-    ///
-    /// Returns the final length of the decoded data after removing padding.
-    ///
-    /// Use this over `get_decoded_data` when you want to avoid heap allocation
-    /// and have a pre-allocated buffer ready.
-    pub fn get_decoded_data_into(self, out_buf: &mut [u8]) -> Result<usize, RLNCError> {
         if !self.is_already_decoded() {
             return Err(RLNCError::NotAllPiecesReceivedYet);
         }
 
         let required_len = self.piece_byte_len * self.required_piece_count;
-        if out_buf.len() < required_len {
-            return Err(RLNCError::InvalidOutputBuffer);
-        }
+        let mut buf = vec![0u8; required_len];
 
         let mut current_pos = 0;
         let full_coded_piece_len = self.get_full_coded_piece_byte_len();
@@ -169,14 +152,14 @@ impl Decoder {
         for chunk in self.matrix.extract_data().chunks_exact(full_coded_piece_len) {
             let payload = &chunk[self.required_piece_count..];
             let end_pos = current_pos + self.piece_byte_len;
-            out_buf[current_pos..end_pos].copy_from_slice(payload);
+            buf[current_pos..end_pos].copy_from_slice(payload);
             current_pos = end_pos;
         }
 
-        let final_len = Self::get_final_data_len(&out_buf[..current_pos])?;
+        let final_len = Self::get_final_data_len(&buf[..current_pos])?;
 
-        // Instead of returning a Vec, we return the length of the valid data.
-        Ok(final_len)
+        buf.truncate(final_len);
+        Ok(buf)
     }
 
     /// Helper to find the boundary marker, validate padding,
