@@ -272,6 +272,58 @@ mod tests {
     }
 
     #[test]
+    fn test_recoder_recode_with_buf_invalid_inputs() {
+        let mut rng = rand::rng();
+
+        let data_byte_len = 1024usize;
+        let piece_count = 32usize;
+        let num_pieces_to_recode_with = piece_count / 2;
+
+        let data = (0..data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
+        let encoder = Encoder::new(data, piece_count).expect("Failed to create Encoder for invalid inputs test");
+
+        let coded_pieces_for_recoder: Vec<u8> = (0..num_pieces_to_recode_with).flat_map(|_| encoder.code(&mut rng)).collect();
+        let mut recoder = Recoder::new(coded_pieces_for_recoder, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count())
+            .expect("Failed to create Recoder for invalid inputs test");
+
+        // Test case 1: Recoded piece buffer is shorter than expected
+        let mut short_recoded_piece = vec![0u8; recoder.get_full_coded_piece_byte_len() - 1];
+        let result_short = recoder.recode_with_buf(&mut rng, &mut short_recoded_piece);
+
+        assert!(result_short.is_err());
+        assert_eq!(
+            result_short.expect_err("Expected InvalidOutputBuffer error for short recoded piece buffer"),
+            RLNCError::InvalidOutputBuffer
+        );
+
+        // Test case 2: Recoded piece buffer is longer than expected
+        let mut long_recoded_piece = vec![0u8; recoder.get_full_coded_piece_byte_len() + 1];
+        let result_long = recoder.recode_with_buf(&mut rng, &mut long_recoded_piece);
+
+        assert!(result_long.is_err());
+        assert_eq!(
+            result_long.expect_err("Expected InvalidOutputBuffer error for long recoded piece buffer"),
+            RLNCError::InvalidOutputBuffer
+        );
+
+        // Test case 3: Empty recoded piece buffer
+        let mut empty_recoded_piece: Vec<u8> = vec![];
+        let result_empty = recoder.recode_with_buf(&mut rng, &mut empty_recoded_piece);
+
+        assert!(result_empty.is_err());
+        assert_eq!(
+            result_empty.expect_err("Expected InvalidOutputBuffer error for empty recoded piece buffer"),
+            RLNCError::InvalidOutputBuffer
+        );
+
+        // Test case 4: Valid recoded piece buffer
+        let mut recoded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+        let result_valid = recoder.recode_with_buf(&mut rng, &mut recoded_piece);
+
+        assert!(result_valid.is_ok());
+    }
+
+    #[test]
     fn test_recoder_getters() {
         let mut rng = rand::rng();
 

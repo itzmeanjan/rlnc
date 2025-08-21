@@ -457,11 +457,11 @@ mod tests {
 
         // Test case 3: Empty coded piece buffer
         let mut empty_coded_piece: Vec<u8> = vec![];
-        let result_long = encoder.code_with_buf(&mut rng, &mut empty_coded_piece);
+        let result_empty = encoder.code_with_buf(&mut rng, &mut empty_coded_piece);
 
-        assert!(result_long.is_err());
+        assert!(result_empty.is_err());
         assert_eq!(
-            result_long.expect_err("Expected InvalidOutputBuffer error for empty coded piece buffer"),
+            result_empty.expect_err("Expected InvalidOutputBuffer error for empty coded piece buffer"),
             RLNCError::InvalidOutputBuffer
         );
 
