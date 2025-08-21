@@ -23,12 +23,12 @@ pub struct Encoder {
 }
 
 impl Encoder {
-    /// Number of pieces original data got splitted into and being coded together.
+    /// Number of pieces original data got split into and being coded together.
     pub fn get_piece_count(&self) -> usize {
         self.piece_count
     }
 
-    /// After padding the original data, it gets splitted into `self.get_piece_count()` many pieces, which results into these many bytes per piece.
+    /// After padding the original data, it gets split into `self.get_piece_count()` many pieces, which results into these many bytes per piece.
     pub fn get_piece_byte_len(&self) -> usize {
         self.piece_byte_len
     }

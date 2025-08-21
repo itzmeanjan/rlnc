@@ -21,12 +21,12 @@ pub struct Decoder {
 }
 
 impl Decoder {
-    /// Number of pieces original data got splitted into and coded together.
+    /// Number of pieces original data got split into and coded together.
     pub fn get_num_pieces_coded_together(&self) -> usize {
         self.required_piece_count
     }
 
-    /// After padding the original data, it gets splitted into `self.get_num_pieces_coded_together()` many pieces, which results into these many bytes per piece.
+    /// After padding the original data, it gets split into `self.get_num_pieces_coded_together()` many pieces, which results into these many bytes per piece.
     pub fn get_piece_byte_len(&self) -> usize {
         self.piece_byte_len
     }

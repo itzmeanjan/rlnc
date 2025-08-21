@@ -33,7 +33,7 @@ fn bytes_to_human_readable(bytes: usize) -> String {
 impl Debug for RLNCConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&format!(
-            "{} data splitted into {} pieces",
+            "{} data split into {} pieces",
             &bytes_to_human_readable(self.data_byte_len),
             self.piece_count
         ))
