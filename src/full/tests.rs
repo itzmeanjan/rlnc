@@ -86,8 +86,7 @@ fn prop_test_rlnc_encoder_recoder_decoder() {
             let mut recoded_piece_idx = 0;
 
             while recoded_piece_idx < num_recoded_pieces_to_use {
-                let mut single_recoded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
-                recoder.recode(&mut rng, &mut single_recoded_piece).unwrap();
+                let single_recoded_piece = recoder.recode(&mut rng);
 
                 match decoder.decode(&single_recoded_piece) {
                     Ok(_) => {}
@@ -172,13 +171,10 @@ fn prop_test_rlnc_decoding_with_useless_pieces() {
         // Hence in following loop, decoding process won't progress, because all the recoded pieces will be useless.
         let num_recoded_pieces_to_use = num_pieces_to_use_for_recoding * 2;
 
-        // Allocate our recoded buffer in advance to avoid reallocations during recoding loop
-        let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
-
         (0..num_recoded_pieces_to_use).for_each(|_| {
-            recoder.recode(&mut rng, &mut coded_piece).unwrap();
+            let recoded_piece = recoder.recode(&mut rng);
 
-            match decoder.decode(&coded_piece) {
+            match decoder.decode(&recoded_piece) {
                 Ok(_) => panic!("Decoding with linearly dependent coded piece must not succeed!"),
                 Err(e) => match e {
                     RLNCError::PieceNotUseful => {}
