@@ -144,7 +144,7 @@ fn recode(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
 }
 
 #[divan::bench(args = ARGS, max_time = Duration::from_secs(100), skip_ext_time = true)]
-fn recode_zero_copy(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
+fn recode_zero_alloc(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
     let mut rng = rand::rng();
     let data = (0..rlnc_config.data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
 
