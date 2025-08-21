@@ -113,38 +113,21 @@ fn encode(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
             encoder.get_full_coded_piece_byte_len(), // Number of bytes for each coded piece
         ))
         .with_inputs(rand::rng)
-        .bench_refs(|rng| divan::black_box(&encoder).code(divan::black_box(rng)));
+        .bench_refs(|rng| divan::black_box(divan::black_box(&encoder).code(divan::black_box(rng))));
 }
 
-#[divan::bench(args = ARGS, max_time = Duration::from_secs(100), skip_ext_time = true)]
-fn encode_with_coding_vector(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
-    let mut rng = rand::rng();
-    let data = (0..rlnc_config.data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
-
-    let coding_vector = vec![1u8; rlnc_config.piece_count];
-
-    let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create RLNC encoder");
-
-    bencher.bench_local(|| {
-        let encoded = encoder.code_with_coding_vector(&coding_vector).unwrap();
-        divan::black_box(encoded);
-    });
-}
-
-// Zero-copy bench for encode
 #[divan::bench(args = ARGS, max_time = Duration::from_secs(100), skip_ext_time = true)]
 fn encode_zero_copy(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
     let mut rng = rand::rng();
     let data = (0..rlnc_config.data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
 
-    let coding_vector = vec![1u8; rlnc_config.piece_count];
-
     let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create RLNC encoder");
 
-    let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
-
-    bencher.bench_local(|| {
-        encoder.code_with_buf(&coding_vector, &mut coded_piece).unwrap();
-        divan::black_box(&mut coded_piece);
-    });
+    bencher
+        .counter(divan::counter::BytesCount::new(
+            encoder.get_piece_byte_len() * encoder.get_piece_count() +  // Number of bytes used as input to encoder
+            encoder.get_full_coded_piece_byte_len(), // Number of bytes for each coded piece
+        ))
+        .with_inputs(|| (rand::rng(), vec![0u8; encoder.get_full_coded_piece_byte_len()]))
+        .bench_refs(|(rng, coded_piece)| divan::black_box(&encoder).code_with_buf(divan::black_box(rng), divan::black_box(coded_piece)));
 }
