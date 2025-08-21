@@ -63,8 +63,6 @@ fn main() {
     // 6. Generate recoded pieces and feed them to the decoder, though all of the recoded pieces will be linearly dependent on the original pieces
     println!("\nRecoder active. Generating recoded pieces...");
     let num_recoded_pieces_to_send = encoder.get_piece_count() * 2; // Send many recoded pieces, though all of them will be useless
-    // Allocate in advance for the full_recoded_piece
-    let mut recoded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
 
     for i in 0..num_recoded_pieces_to_send {
         // This condition will never be executed because the decoder will not see a single useful coded piece while executing inside this loop
@@ -73,7 +71,7 @@ fn main() {
             break;
         }
 
-        recoder.recode(&mut rng, &mut recoded_piece).unwrap();
+        let recoded_piece = recoder.recode(&mut rng);
 
         match decoder.decode(&recoded_piece) {
             Ok(_) => println!("  Decoded recoded piece {}: Useful.", i + 1),
@@ -108,7 +106,7 @@ fn main() {
             break;
         }
 
-        recoder.recode(&mut rng, &mut recoded_piece).expect("Failed to recode piece");
+        let recoded_piece = recoder.recode(&mut rng);
 
         match decoder.decode(&recoded_piece) {
             Ok(_) => println!("  Decoded recoded piece {}: Useful.", i + 1),
