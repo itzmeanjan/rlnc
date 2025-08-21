@@ -346,45 +346,130 @@ mod tests {
         let encoder = Encoder::new(data, piece_count).expect("Failed to create Encoder for invalid inputs test");
 
         // Test case 1: Coding vector is shorter than expected
-        let short_coding_vector_len = piece_count - 1;
-        let short_coding_vector: Vec<u8> = (0..short_coding_vector_len).map(|_| rng.random()).collect();
-        let mut buf_short_coding_vector = vec![0u8; encoder.get_full_coded_piece_byte_len()];
-        let result_short = encoder.code_with_buf(&short_coding_vector, &mut buf_short_coding_vector);
+        let short_coding_vector: Vec<u8> = (0..(encoder.get_piece_count() - 1)).map(|_| rng.random()).collect();
+        let mut coded_data = vec![0u8; encoder.get_piece_byte_len()];
+
+        let result_short = encoder.code_with_coding_vector(&short_coding_vector, &mut coded_data);
 
         assert!(result_short.is_err());
         assert_eq!(
-            result_short.expect_err("Expected CodingVectorLengthMismatch error for short vector"),
+            result_short.expect_err("Expected CodingVectorLengthMismatch error for short coding vector"),
             RLNCError::CodingVectorLengthMismatch
         );
 
-        // Test case 2: Coding vector is longer than expected
-        let long_coding_vector_len = piece_count + 1;
-        let long_coding_vector: Vec<u8> = (0..long_coding_vector_len).map(|_| rng.random()).collect();
-        let result_long = encoder.code_with_buf(&long_coding_vector, &mut vec![0u8; encoder.get_full_coded_piece_byte_len()]);
+        // Test case 2: Coded data buffer is shorter than expected
+        let coding_vector: Vec<u8> = (0..encoder.get_piece_count()).map(|_| rng.random()).collect();
+        let mut short_coded_data = vec![0u8; encoder.get_piece_byte_len() - 1];
+
+        let result_short = encoder.code_with_coding_vector(&coding_vector, &mut short_coded_data);
+
+        assert!(result_short.is_err());
+        assert_eq!(
+            result_short.expect_err("Expected InvalidOutputBuffer error for short coded data buffer"),
+            RLNCError::InvalidOutputBuffer
+        );
+
+        // Test case 3: Coding vector is longer than expected
+        let long_coding_vector: Vec<u8> = (0..(encoder.get_piece_count() + 1)).map(|_| rng.random()).collect();
+        let mut coded_data = vec![0u8; encoder.get_piece_byte_len()];
+
+        let result_long = encoder.code_with_coding_vector(&long_coding_vector, &mut coded_data);
 
         assert!(result_long.is_err());
         assert_eq!(
-            result_long.expect_err("Expected CodingVectorLengthMismatch error for long vector"),
+            result_long.expect_err("Expected CodingVectorLengthMismatch error for long coding vector"),
             RLNCError::CodingVectorLengthMismatch
         );
 
-        // Test case 3: Empty coding vector
-        let empty_coding_vector: Vec<u8> = Vec::new();
-        let result_empty = encoder.code_with_buf(&empty_coding_vector, &mut vec![0u8; encoder.get_full_coded_piece_byte_len()]);
+        // Test case 4: Coded data buffer is longer than expected
+        let coding_vector: Vec<u8> = (0..encoder.get_piece_count()).map(|_| rng.random()).collect();
+        let mut long_coded_data = vec![0u8; encoder.get_piece_byte_len() + 1];
+
+        let result_long = encoder.code_with_coding_vector(&coding_vector, &mut long_coded_data);
+
+        assert!(result_long.is_err());
+        assert_eq!(
+            result_long.expect_err("Expected InvalidOutputBuffer error for long coded data buffer"),
+            RLNCError::InvalidOutputBuffer
+        );
+
+        // Test case 5: Empty coding vector
+        let empty_coding_vector: Vec<u8> = vec![];
+        let mut coded_data = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+
+        let result_empty = encoder.code_with_coding_vector(&empty_coding_vector, &mut coded_data);
 
         assert!(result_empty.is_err());
         assert_eq!(
-            result_empty.expect_err("Expected CodingVectorLengthMismatch error for empty vector"),
+            result_empty.expect_err("Expected CodingVectorLengthMismatch error for empty coding vector"),
             RLNCError::CodingVectorLengthMismatch
         );
 
-        // Test case 4: Valid coding vector
-        let valid_coding_vector: Vec<u8> = (0..piece_count).map(|_| rng.random()).collect();
-        let mut buf_valid_coding_vector = vec![0u8; encoder.get_full_coded_piece_byte_len()];
-        let result_valid = encoder.code_with_buf(&valid_coding_vector, &mut buf_valid_coding_vector);
+        // Test case 6: Empty coding vector
+        let coding_vector: Vec<u8> = (0..encoder.get_piece_count()).map(|_| rng.random()).collect();
+        let mut empty_coded_data: Vec<u8> = vec![];
+
+        let result_empty = encoder.code_with_coding_vector(&coding_vector, &mut empty_coded_data);
+
+        assert!(result_empty.is_err());
+        assert_eq!(
+            result_empty.expect_err("Expected InvalidOutputBuffer error for empty coded data buffer"),
+            RLNCError::InvalidOutputBuffer
+        );
+
+        // Test case 7: Valid coding vector
+        let valid_coding_vector: Vec<u8> = (0..encoder.get_piece_count()).map(|_| rng.random()).collect();
+        let mut valid_coded_data = vec![0u8; encoder.get_piece_byte_len()];
+
+        let result_valid = encoder.code_with_coding_vector(&valid_coding_vector, &mut valid_coded_data);
 
         assert!(result_valid.is_ok());
-        assert_eq!(buf_valid_coding_vector.len(), encoder.get_full_coded_piece_byte_len());
+    }
+
+    #[test]
+    fn test_encoder_code_with_buf_invalid_inputs() {
+        let mut rng = rand::rng();
+
+        let data_byte_len = 1024usize;
+        let piece_count = 32usize;
+        let data = (0..data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
+        let encoder = Encoder::new(data, piece_count).expect("Failed to create Encoder for invalid inputs test");
+
+        // Test case 1: Coded piece buffer is shorter than expected
+        let mut short_coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len() - 1];
+        let result_short = encoder.code_with_buf(&mut rng, &mut short_coded_piece);
+
+        assert!(result_short.is_err());
+        assert_eq!(
+            result_short.expect_err("Expected InvalidOutputBuffer error for short coded piece buffer"),
+            RLNCError::InvalidOutputBuffer
+        );
+
+        // Test case 2: Coded piece buffer is longer than expected
+        let mut long_coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len() + 1];
+        let result_long = encoder.code_with_buf(&mut rng, &mut long_coded_piece);
+
+        assert!(result_long.is_err());
+        assert_eq!(
+            result_long.expect_err("Expected InvalidOutputBuffer error for long coded piece buffer"),
+            RLNCError::InvalidOutputBuffer
+        );
+
+        // Test case 3: Empty coded piece buffer
+        let mut empty_coded_piece: Vec<u8> = vec![];
+        let result_long = encoder.code_with_buf(&mut rng, &mut empty_coded_piece);
+
+        assert!(result_long.is_err());
+        assert_eq!(
+            result_long.expect_err("Expected InvalidOutputBuffer error for empty coded piece buffer"),
+            RLNCError::InvalidOutputBuffer
+        );
+
+        // Test case 4: Valid full coded piece buffer
+        let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+        let result_valid = encoder.code_with_buf(&mut rng, &mut coded_piece);
+
+        assert!(result_valid.is_ok());
     }
 
     #[test]
