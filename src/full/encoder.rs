@@ -11,7 +11,9 @@ use crate::common::simd::{gf256_inplace_add_vectors, gf256_inplace_mul_vec_by_sc
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-/// Represents an RLNC encoder, responsible for dividing data into pieces and
+/// Random Linear Network Coding (RLNC) Encoder.
+///
+/// It is responsible for ensuring pading, dividing padded data into pieces and
 /// generating coded pieces based on random sampled coding vectors.
 #[derive(Clone, Debug)]
 pub struct Encoder {
@@ -40,11 +42,11 @@ impl Encoder {
     /// This is suitable if the input data length is already a multiple of the
     /// desired piece count. This interface is used by Recoder.
     ///
-    /// Returns `Ok(Encoder)` on success.
-    /// Returns `Err(RLNCError::DataLengthZero)` if `data` is empty.
-    /// Returns `Err(RLNCError::PieceCountZero)` if `piece_count` is zero.
-    /// Returns `Err(RLNCError::DataLengthMismatch)` if the data length is not a
-    /// multiple of the piece count.
+    /// # Returns
+    /// * Returns `Ok(Encoder)` on success.
+    /// * Returns `Err(RLNCError::DataLengthZero)` if `data` is empty.
+    /// * Returns `Err(RLNCError::PieceCountZero)` if `piece_count` is zero.
+    /// * Returns `Err(RLNCError::DataLengthMismatch)` if the data length is not a multiple of the piece count.
     pub(crate) fn without_padding(data: Vec<u8>, piece_count: usize) -> Result<Encoder, RLNCError> {
         if data.is_empty() {
             return Err(RLNCError::DataLengthZero);
@@ -77,9 +79,9 @@ impl Encoder {
     /// at the end of the original data before zero padding.
     ///
     /// # Returns
-    /// Returns `Ok(Encoder)` on success.
-    /// Returns `Err(RLNCError::DataLengthZero)` if `data` is empty.
-    /// Returns `Err(RLNCError::PieceCountZero)` if `piece_count` is zero.
+    /// * Returns `Ok(Encoder)` on success.
+    /// * Returns `Err(RLNCError::DataLengthZero)` if `data` is empty.
+    /// * Returns `Err(RLNCError::PieceCountZero)` if `piece_count` is zero.
     pub fn new(mut data: Vec<u8>, piece_count: usize) -> Result<Encoder, RLNCError> {
         if data.is_empty() {
             return Err(RLNCError::DataLengthZero);
@@ -103,19 +105,25 @@ impl Encoder {
         })
     }
 
-    /// Encodes the data held by the encoder using a provided coding vector.
+    /// Erasure codes the data held by the encoder using a provided coding vector. This function
+    /// is used by the Recoder, to avoid any memory allocation during recoding.
     ///
-    /// The resulting coded piece is returned as a `Vec<u8>`, prefixed by the
-    /// coding vector itself (as `u8` values). The total length of the returned
-    /// vector is `self.get_full_coded_piece_byte_len()`.
+    /// The output buffer `coded_data` will contain only coded data portion of the
+    /// full erasure-coded piece. Its length must be equal to `self.get_piece_byte_len()`.
+    /// It's caller responsibility to fill `coding_vector` with random coding coefficients.
     ///
-    /// Returns `RLNCError::CodingVectorLengthMismatch` if the length of the
-    /// provided `coding_vector` does not match `self.piece_count`.
+    /// This implementation might benefit from SIMD assisted fast GF(2^8) arithmetic on some targets
+    /// such as `x86_64` and `aarch64`. In case you want `rayon` data-parallelism to kick-in, you have
+    /// to opt-in for `parallel` feature, which should enable the other implementation.
     ///
-    /// # Deprecated
-    /// Use the allocation friendly `code_with_buf` instead.
-    /// This method is deprecated due to performance and memory usage concerns.
-    /// It uses a vector allocation for each coded piece, which can be inefficient.
+    /// # Arguments
+    /// * `coding_vector` - A slice to random coding vector which is to be used for preparing a new coded piece.
+    /// * `coded_data` - A mutable slice to write the coded data into.
+    ///
+    /// # Returns
+    /// * Returns `Ok(())` on success.
+    /// * Returns `Err(RLNCError::CodingVectorLengthMismatch)` if the length of `coding_vector` is not `self.get_piece_count()`.
+    /// * Returns `Err(RLNCError::InvalidOutputBuffer)` if the length of `coded_data` is not `self.get_piece_byte_len()`.
     #[cfg(not(feature = "parallel"))]
     pub(crate) fn code_with_coding_vector(&self, coding_vector: &[u8], coded_data: &mut [u8]) -> Result<(), RLNCError> {
         if coding_vector.len() != self.piece_count {
@@ -135,21 +143,26 @@ impl Encoder {
         Ok(())
     }
 
-    /// This function is deprecated.
+    /// Erasure codes the data held by the encoder using a provided coding vector. This function
+    /// is used by the Recoder, to avoid any memory allocation during recoding.
     ///
-    /// Encodes the data held by the encoder using a provided coding vector.
+    /// The output buffer `coded_data` will contain only coded data portion of the
+    /// full erasure-coded piece. Its length must be equal to `self.get_piece_byte_len()`.
+    /// It's caller responsibility to fill `coding_vector` with random coding coefficients.
     ///
-    /// The resulting coded piece is returned as a `Vec<u8>`, prefixed by the
-    /// coding vector itself (as `u8` values). The total length of the returned
-    /// vector is `self.get_complete_coded_piece_byte_len()`.
+    /// This implementation uses `rayon` data-parallelism for fast erasure-coding. One might
+    /// want that in some scenarios, but note this same function without `parallel` feature-gate also
+    /// performs well when running on target for which this library has GF(2^8) SIMD support.
+    /// Currently we support optimized GF(2^8) vector arithmetic for `x86_64` and `aarchh64`.
     ///
-    /// Returns `RLNCError::CodingVectorLengthMismatch` if the length of the
-    /// provided `coding_vector` does not match `self.piece_count`.
+    /// # Arguments
+    /// * `coding_vector` - A slice to random coding vector which is to be used for preparing a new coded piece.
+    /// * `coded_data` - A mutable slice to write the coded data into.
     ///
-    /// # Deprecated
-    /// Use the allocation friendly `code_with_buf` instead.
-    /// This method is deprecated due to performance and memory usage concerns.
-    /// It uses a vector allocation for each coded piece, which can be inefficient.
+    /// # Returns
+    /// * Returns `Ok(())` on success.
+    /// * Returns `Err(RLNCError::CodingVectorLengthMismatch)` if the length of `coding_vector` is not `self.get_piece_count()`.
+    /// * Returns `Err(RLNCError::InvalidOutputBuffer)` if the length of `coded_data` is not `self.get_piece_byte_len()`.
     #[cfg(feature = "parallel")]
     pub(crate) fn code_with_coding_vector(&self, coding_vector: &[u8], coded_data: &mut [u8]) -> Result<(), RLNCError> {
         if coding_vector.len() != self.piece_count {
@@ -211,14 +224,20 @@ impl Encoder {
         Ok(())
     }
 
-    /// Encodes the data held by the encoder using a provided coding vector.
+    /// Produces a new coded piece, random sampling coding coefficients and
+    /// writing full coded piece into the provided buffer.
     ///
-    /// The resulting coded piece is written into the provided output buffer `out_buf`,
-    /// coding vector itself (as `u8` values). The total length of the returned
-    /// vector is `self.get_full_coded_piece_byte_len()`.
+    /// The output buffer `full_coded_piece` will contain the random sampled
+    /// coding vector followed by the coded data. The length of `full_coded_piece`
+    /// must be equal to `self.get_full_coded_piece_byte_len()`.
     ///
-    /// Returns `RLNCError::CodingVectorLengthMismatch` if the length of the
-    /// provided `coding_vector` does not match `self.piece_count`.
+    /// # Arguments
+    /// * `rng` - A mutable reference to a random number generator.
+    /// * `full_coded_piece` - A mutable slice to write the full coded piece (coding vector + coded data) into.
+    ///
+    /// # Returns
+    /// * Returns `Ok(())` on success.
+    /// * Returns `Err(RLNCError::InvalidOutputBuffer)` if the length of `full_coded_piece` is incorrect.
     pub fn code_with_buf<R: Rng + ?Sized>(&self, rng: &mut R, full_coded_piece: &mut [u8]) -> Result<(), RLNCError> {
         if full_coded_piece.len() != self.get_full_coded_piece_byte_len() {
             return Err(RLNCError::InvalidOutputBuffer);
@@ -230,16 +249,18 @@ impl Encoder {
         self.code_with_coding_vector(&coding_vector, &mut coded_data)
     }
 
-    /// Encodes the data held by the encoder using a randomly sampled coding vector.
+    /// Produces a new coded piece, random sampling a coding vector.
     ///
-    /// Convenience methods which allocates then calls `code_with_buf` internally,
-    /// which allows the caller to assign the output buffer. If you want to control
-    /// the allocation, use `code_with_buf` directly instead of this method.
+    /// This is a convenience method that allocates a new `Vec<u8>` internally and
+    /// then calls `code_with_buf`. If you want to control the allocation, use
+    /// `code_with_buf` directly.
     ///
-    /// A coding vector of `self.piece_count` random `Gf256` symbols is generated
-    /// using the provided random number generator.
+    /// # Arguments
+    /// * `rng` - A mutable reference to a random number generator.
     ///
-    /// Returns the coded piece prefixed by the random coding vector.
+    /// # Returns
+    /// A `Vec<u8>` containing the random sampled coding vector followed by the
+    /// coded data. The length of the returned vector is `self.get_full_coded_piece_byte_len()`.
     pub fn code<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec<u8> {
         let mut full_coded_piece = vec![0u8; self.get_full_coded_piece_byte_len()];
         unsafe { self.code_with_buf(rng, &mut full_coded_piece).unwrap_unchecked() };

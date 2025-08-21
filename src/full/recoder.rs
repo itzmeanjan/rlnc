@@ -2,14 +2,13 @@ use super::encoder::Encoder;
 use crate::{RLNCError, common::gf256::Gf256};
 use rand::Rng;
 
-/// `Recoder` takes already coded pieces and recodes these coded pieces using
+/// Random Linear Network Coding (RLNC) Recoder
+///
+/// It takes already coded pieces and recodes these coded pieces using
 /// a new random sampled coding vector. This is useful for distributing coded
 /// pieces more widely without needing to decode back to original data.
 ///
-/// A `Recoder` essentially acts as a new encoder, but it operates on the *encoded* source pieces.
-///
-/// The `Recoder` stores the coding vectors and coded pieces from the input.
-/// Internally, it uses an `Encoder` initialized with the coded pieces.
+/// A recoder essentially acts as a new encoder, but it operates on the *encoded* source pieces.
 #[derive(Clone, Debug)]
 pub struct Recoder {
     coding_vectors: Vec<Gf256>,
@@ -53,7 +52,6 @@ impl Recoder {
     /// represents the source pieces extracted from the input.
     ///
     /// # Arguments
-    ///
     /// * `data`: A vector of bytes containing the concatenated full coded pieces, each of
     ///   `full_coded_piece_byte_len` bytes length.
     /// * `full_coded_piece_byte_len`: The byte length of a full coded piece.
@@ -62,12 +60,11 @@ impl Recoder {
     ///   of the coding vector prepended to each full coded piece.
     ///
     /// # Returns
-    /// Returns `Ok(Recoder)` on successful creation.
-    /// Returns `Err(RLNCError::NotEnoughPiecesToRecode)` if the input `data` is empty
-    /// or does not contain at least one full coded piece.
-    /// Returns `Err(RLNCError::PieceLengthZero)` if `full_coded_piece_byte_len` is zero.
-    /// Returns `Err(RLNCError::PieceCountZero)` if `num_pieces_coded_together` is zero.
-    /// Returns `Err(RLNCError::PieceLengthTooShort)` if `full_coded_piece_byte_len` is not greater than `num_pieces_coded_together`.
+    /// * Returns `Ok(Recoder)` on successful creation.
+    /// * Returns `Err(RLNCError::NotEnoughPiecesToRecode)` if the input `data` is empty or does not contain at least one full coded piece.
+    /// * Returns `Err(RLNCError::PieceLengthZero)` if `full_coded_piece_byte_len` is zero.
+    /// * Returns `Err(RLNCError::PieceCountZero)` if `num_pieces_coded_together` is zero.
+    /// * Returns `Err(RLNCError::PieceLengthTooShort)` if `full_coded_piece_byte_len` is not greater than `num_pieces_coded_together`.
     pub fn new(data: Vec<u8>, full_coded_piece_byte_len: usize, num_pieces_coded_together: usize) -> Result<Recoder, RLNCError> {
         if data.is_empty() {
             return Err(RLNCError::NotEnoughPiecesToRecode);
@@ -110,27 +107,18 @@ impl Recoder {
         })
     }
 
-    /// Generates a new coded piece by recoding the source pieces using a randomly sampled coding vector.
-    ///
-    /// This method generates a random recoding vector (length `self.get_num_pieces_recoded_together()`),
-    /// computes the resulting coding vector for the original source pieces by
-    /// multiplying the random vector by the matrix of received coding vectors,
-    /// and then uses the internal `Encoder` to produce a new coded piece based
-    /// on this computed coding vector.
-    ///
-    /// The output is a vector containing the computed source coding vector
-    /// prepended to the newly generated coded piece.
+    /// Produces a new coded piece by recoding the source pieces, random sampling coding coefficients
+    /// and writing full coded piece into the provided buffer. The output buffer contains the
+    /// computed source coding vector followed by the coded data. The length of `full_recoded_piece`
+    /// must be equal to `self.get_full_coded_piece_byte_len()`.
     ///
     /// # Arguments
-    ///
     /// * `rng`: Used to sample the random recoding vector.
     /// * `full_recoded_piece`: A mutable slice of bytes where the new coded piece will be written.
     ///
     /// # Returns
-    ///
-    /// Returns a `Vec<u8>` representing the new coded piece prepended with its
-    /// source coding vector. The length of the returned vector is
-    /// `self.get_full_coded_piece_byte_len()`.
+    /// * Returns a `Ok(())` when successful.
+    /// * Returns `Err(RLNCError::InvalidOutputBuffer)` if the length of `full_recoded_piece` is incorrect.
     pub fn recode_with_buf<R: Rng + ?Sized>(&mut self, rng: &mut R, full_recoded_piece: &mut [u8]) -> Result<(), RLNCError> {
         if full_recoded_piece.len() != self.full_coded_piece_byte_len {
             return Err(RLNCError::InvalidOutputBuffer);
@@ -164,26 +152,17 @@ impl Recoder {
         Ok(())
     }
 
-    /// Generates a new coded piece by recoding the source pieces using a randomly sampled coding vector.
+    /// Produces a new coded piece by recoding the source pieces using a randomly sampled coding vector.
     ///
-    /// This method generates a random recoding vector (length `self.get_num_pieces_recoded_together()`),
-    /// computes the resulting coding vector for the original source pieces by
-    /// multiplying the random vector by the matrix of received coding vectors,
-    /// and then uses the internal `Encoder` to produce a new coded piece based
-    /// on this computed coding vector.
-    ///
-    /// The output is a vector containing the computed source coding vector
-    /// prepended to the newly generated coded piece.
+    /// This is a convenience method that allocates a new `Vec<u8>` internally and then calls `recode_with_buf`.
+    /// If you want to control the allocation, use `recode_with_buf` directly.
     ///
     /// # Arguments
-    ///
     /// * `rng`: Used to sample the random recoding vector.
     ///
     /// # Returns
-    ///
-    /// Returns a `Vec<u8>` representing the new coded piece prepended with its
-    /// source coding vector. The length of the returned vector is
-    /// `self.get_full_coded_piece_byte_len()`.
+    /// A `Vec<u8>` representing the new coded piece prepended with its source coding vector.
+    /// The length of the returned vector is `self.get_full_coded_piece_byte_len()`.
     pub fn recode<R: Rng + ?Sized>(&mut self, rng: &mut R) -> Vec<u8> {
         let mut full_recoded_piece = vec![0u8; self.get_full_coded_piece_byte_len()];
         unsafe { self.recode_with_buf(rng, &mut full_recoded_piece).unwrap_unchecked() }
