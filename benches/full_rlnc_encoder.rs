@@ -1,5 +1,5 @@
 use rand::Rng;
-use rlnc::full::encoder::Encoder;
+use rlnc::full::Encoder;
 use std::{fmt::Debug, time::Duration};
 
 #[global_allocator]

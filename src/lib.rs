@@ -50,7 +50,7 @@
 //! use rand::Rng;
 //! use rlnc::{
 //!     RLNCError,
-//!     full::{decoder::Decoder, encoder::Encoder},
+//!     full::{Decoder, Encoder},
 //! };
 //!
 //! let mut rng = rand::rng();

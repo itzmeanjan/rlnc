@@ -1,7 +1,7 @@
 use rand::Rng;
 use rlnc::{
     RLNCError,
-    full::{decoder::Decoder, encoder::Encoder, recoder::Recoder},
+    full::{Decoder, Encoder, Recoder},
 };
 
 fn main() {

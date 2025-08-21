@@ -1,7 +1,7 @@
 use rand::Rng;
 use rlnc::{
     RLNCError,
-    full::{decoder::Decoder, encoder::Encoder},
+    full::{Decoder, Encoder},
 };
 use std::{fmt::Debug, time::Duration};
 
