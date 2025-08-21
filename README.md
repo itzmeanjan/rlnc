@@ -1643,9 +1643,9 @@ To use `rlnc` library crate in your Rust project, add it as a dependency in your
 
 ```toml
 [dependencies]
-rlnc = "=0.8.2"                                      # On x86 and aarch64 targets, it offers fast encoding, recoding and decoding, using SIMD intrinsics.
+rlnc = "=0.8.3"                                      # On x86 and aarch64 targets, it offers fast encoding, recoding and decoding, using SIMD intrinsics.
 # or
-rlnc = { version = "=0.8.2", features = "parallel" } # Uses `rayon`-based data-parallelism for fast encoding and recoding. Note, this feature, doesn't yet parallelize RLNC decoding.
+rlnc = { version = "=0.8.3", features = "parallel" } # Uses `rayon`-based data-parallelism for fast encoding and recoding. Note, this feature, doesn't yet parallelize RLNC decoding.
 
 rand = { version = "=0.9.1" } # Required for random number generation
 ```
