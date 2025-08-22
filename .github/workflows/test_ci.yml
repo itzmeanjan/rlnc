@@ -28,7 +28,7 @@ jobs:
             windows-11-arm, # arm64
         ]
         rust: [
-          1.85.0, # MSRV of this project
+          1.89.0, # MSRV of this project
           stable
         ]
       max-parallel: 4
@@ -46,7 +46,7 @@ jobs:
         run: make example
 
       - name: Add WebAssembly compilation target
-        if: matrix.os == 'ubuntu-latest' && matrix.rust == 'stable' # Because MSRV of wasmtime-cli is 1.86.0
+        if: matrix.os == 'ubuntu-latest' && matrix.rust == 'stable'
         run: |
           rustup target add wasm32-wasip1
           rustup target add wasm32-wasip2

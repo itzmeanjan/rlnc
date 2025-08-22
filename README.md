@@ -21,12 +21,12 @@ For now this crate implements only **Full RLNC** scheme.
 
 ## Prerequisites
 
-Rust stable toolchain; see <https://rustup.rs> for installation guide. MSRV for this crate is 1.85.0.
+Rust stable toolchain; see <https://rustup.rs> for installation guide. MSRV for this crate is 1.89.0.
 
  ```bash
 # While developing this library, I was using
 $ rustc --version
-rustc 1.88.0 (6b00bc388 2025-06-23)
+rustc 1.89.0 (29483883e 2025-08-04)
 ```
 
 ## Testing
