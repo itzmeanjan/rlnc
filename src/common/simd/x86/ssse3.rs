@@ -4,10 +4,10 @@ use crate::common::{
 };
 
 #[cfg(target_arch = "x86")]
-use std::arch::x86_64::{_mm_and_si128, _mm_lddqu_si128, _mm_set1_epi8, _mm_shuffle_epi8, _mm_srli_epi64, _mm_storeu_si128, _mm_xor_si128};
+use std::arch::x86_64::*;
 
 #[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::{_mm_and_si128, _mm_lddqu_si128, _mm_set1_epi8, _mm_shuffle_epi8, _mm_srli_epi64, _mm_storeu_si128, _mm_xor_si128};
+use std::arch::x86_64::*;
 
 #[target_feature(enable = "ssse3")]
 pub unsafe fn mul_vec_by_scalar(vec: &mut [u8], scalar: u8) {

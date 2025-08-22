@@ -3,7 +3,7 @@ use crate::common::{
     simd_mul_table::{GF256_SIMD_MUL_TABLE_HIGH, GF256_SIMD_MUL_TABLE_LOW},
 };
 
-use std::arch::aarch64::{vandq_u8, vdupq_n_u8, veorq_u8, vld1q_u8, vqtbl1q_u8, vshrq_n_u8, vst1q_u8};
+use std::arch::aarch64::*;
 
 #[target_feature(enable = "neon")]
 pub unsafe fn mul_vec_by_scalar(vec: &mut [u8], scalar: u8) {
