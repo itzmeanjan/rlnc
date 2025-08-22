@@ -14,12 +14,12 @@ pub unsafe fn mul_vec_by_scalar(vec: &mut [u8], scalar: u8) {
     let mut iter = vec.chunks_exact_mut(2 * GF256_HALF_ORDER);
 
     unsafe {
-        let l_tbl = _mm256_broadcastsi128_si256(_mm_lddqu_si128(GF256_SIMD_MUL_TABLE_LOW[scalar as usize].as_ptr() as *const _));
-        let h_tbl = _mm256_broadcastsi128_si256(_mm_lddqu_si128(GF256_SIMD_MUL_TABLE_HIGH[scalar as usize].as_ptr() as *const _));
+        let l_tbl = _mm256_broadcastsi128_si256(_mm_lddqu_si128(GF256_SIMD_MUL_TABLE_LOW[scalar as usize].as_ptr().cast()));
+        let h_tbl = _mm256_broadcastsi128_si256(_mm_lddqu_si128(GF256_SIMD_MUL_TABLE_HIGH[scalar as usize].as_ptr().cast()));
         let l_mask = _mm256_set1_epi8(0x0f);
 
         for chunk in iter.by_ref() {
-            let chunk_simd = _mm256_lddqu_si256(chunk.as_ptr() as *const _);
+            let chunk_simd = _mm256_lddqu_si256(chunk.as_ptr().cast());
 
             let chunk_simd_lo = _mm256_and_si256(chunk_simd, l_mask);
             let chunk_simd_lo = _mm256_shuffle_epi8(l_tbl, chunk_simd_lo);
@@ -29,7 +29,7 @@ pub unsafe fn mul_vec_by_scalar(vec: &mut [u8], scalar: u8) {
             let chunk_simd_hi = _mm256_shuffle_epi8(h_tbl, chunk_simd_hi);
 
             let res = _mm256_xor_si256(chunk_simd_lo, chunk_simd_hi);
-            _mm256_storeu_si256(chunk.as_mut_ptr() as *mut _, res);
+            _mm256_storeu_si256(chunk.as_mut_ptr().cast(), res);
         }
     }
 
@@ -45,11 +45,11 @@ pub unsafe fn add_vec_into(vec_dst: &mut [u8], vec_src: &[u8]) {
 
     unsafe {
         for (chunk_dst, chunk_src) in iter_dst.by_ref().zip(iter_src.by_ref()) {
-            let chunk_dst_simd = _mm256_lddqu_si256(chunk_dst.as_ptr() as *const _);
-            let chunk_src_simd = _mm256_lddqu_si256(chunk_src.as_ptr() as *const _);
+            let chunk_dst_simd = _mm256_lddqu_si256(chunk_dst.as_ptr().cast());
+            let chunk_src_simd = _mm256_lddqu_si256(chunk_src.as_ptr().cast());
             let chunk_result = _mm256_xor_si256(chunk_dst_simd, chunk_src_simd);
 
-            _mm256_storeu_si256(chunk_dst.as_mut_ptr() as *mut _, chunk_result);
+            _mm256_storeu_si256(chunk_dst.as_mut_ptr().cast(), chunk_result);
         }
     }
 
@@ -67,12 +67,12 @@ pub unsafe fn mul_vec_by_scalar_then_add_into(add_into_vec: &mut [u8], mul_vec: 
     let mut mul_vec_iter = mul_vec.chunks_exact(2 * GF256_HALF_ORDER);
 
     unsafe {
-        let l_tbl = _mm256_broadcastsi128_si256(_mm_lddqu_si128(GF256_SIMD_MUL_TABLE_LOW[scalar as usize].as_ptr() as *const _));
-        let h_tbl = _mm256_broadcastsi128_si256(_mm_lddqu_si128(GF256_SIMD_MUL_TABLE_HIGH[scalar as usize].as_ptr() as *const _));
+        let l_tbl = _mm256_broadcastsi128_si256(_mm_lddqu_si128(GF256_SIMD_MUL_TABLE_LOW[scalar as usize].as_ptr().cast()));
+        let h_tbl = _mm256_broadcastsi128_si256(_mm_lddqu_si128(GF256_SIMD_MUL_TABLE_HIGH[scalar as usize].as_ptr().cast()));
         let l_mask = _mm256_set1_epi8(0x0f);
 
         for (add_vec_chunk, mul_vec_chunk) in add_vec_iter.by_ref().zip(mul_vec_iter.by_ref()) {
-            let mul_vec_chunk_simd = _mm256_lddqu_si256(mul_vec_chunk.as_ptr() as *const _);
+            let mul_vec_chunk_simd = _mm256_lddqu_si256(mul_vec_chunk.as_ptr().cast());
 
             let chunk_simd_lo = _mm256_and_si256(mul_vec_chunk_simd, l_mask);
             let chunk_simd_lo = _mm256_shuffle_epi8(l_tbl, chunk_simd_lo);
@@ -83,10 +83,10 @@ pub unsafe fn mul_vec_by_scalar_then_add_into(add_into_vec: &mut [u8], mul_vec: 
 
             let scaled_res = _mm256_xor_si256(chunk_simd_lo, chunk_simd_hi);
 
-            let add_vec_chunk_simd = _mm256_lddqu_si256(add_vec_chunk.as_ptr() as *const _);
+            let add_vec_chunk_simd = _mm256_lddqu_si256(add_vec_chunk.as_ptr().cast());
             let accum_res = _mm256_xor_si256(add_vec_chunk_simd, scaled_res);
 
-            _mm256_storeu_si256(add_vec_chunk.as_mut_ptr() as *mut _, accum_res);
+            _mm256_storeu_si256(add_vec_chunk.as_mut_ptr().cast(), accum_res);
         }
     }
 
