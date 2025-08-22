@@ -3,19 +3,19 @@ use crate::common::{
     simd_mul_table::{GF256_SIMD_MUL_TABLE_HIGH, GF256_SIMD_MUL_TABLE_LOW},
 };
 
-use std::arch::aarch64::{vandq_u8, vdupq_n_u8, veorq_u8, vld1q_u8, vqtbl1q_u8, vshrq_n_u8, vst1q_u8};
+use std::arch::aarch64::*;
 
 #[target_feature(enable = "neon")]
 pub unsafe fn mul_vec_by_scalar(vec: &mut [u8], scalar: u8) {
     let mut iter = vec.chunks_exact_mut(GF256_HALF_ORDER);
 
     unsafe {
-        let l_tbl = vld1q_u8(GF256_SIMD_MUL_TABLE_LOW[scalar as usize].as_ptr() as *const _);
-        let h_tbl = vld1q_u8(GF256_SIMD_MUL_TABLE_HIGH[scalar as usize].as_ptr() as *const _);
+        let l_tbl = vld1q_u8(GF256_SIMD_MUL_TABLE_LOW[scalar as usize].as_ptr().cast());
+        let h_tbl = vld1q_u8(GF256_SIMD_MUL_TABLE_HIGH[scalar as usize].as_ptr().cast());
         let l_mask = vdupq_n_u8(0x0f);
 
         for chunk in iter.by_ref() {
-            let chunk_simd = vld1q_u8(chunk.as_ptr() as *const _);
+            let chunk_simd = vld1q_u8(chunk.as_ptr().cast());
 
             let chunk_simd_lo = vandq_u8(chunk_simd, l_mask);
             let chunk_simd_lo = vqtbl1q_u8(l_tbl, chunk_simd_lo);
@@ -25,7 +25,7 @@ pub unsafe fn mul_vec_by_scalar(vec: &mut [u8], scalar: u8) {
             let chunk_simd_hi = vqtbl1q_u8(h_tbl, chunk_simd_hi);
 
             let res = veorq_u8(chunk_simd_lo, chunk_simd_hi);
-            vst1q_u8(chunk.as_mut_ptr() as *mut _, res);
+            vst1q_u8(chunk.as_mut_ptr().cast(), res);
         }
     }
 
@@ -41,11 +41,11 @@ pub unsafe fn add_vec_into(vec_dst: &mut [u8], vec_src: &[u8]) {
 
     unsafe {
         for (chunk_dst, chunk_src) in iter_dst.by_ref().zip(iter_src.by_ref()) {
-            let chunk_dst_simd = vld1q_u8(chunk_dst.as_ptr() as *const _);
-            let chunk_src_simd = vld1q_u8(chunk_src.as_ptr() as *const _);
+            let chunk_dst_simd = vld1q_u8(chunk_dst.as_ptr().cast());
+            let chunk_src_simd = vld1q_u8(chunk_src.as_ptr().cast());
             let chunk_result = veorq_u8(chunk_dst_simd, chunk_src_simd);
 
-            vst1q_u8(chunk_dst.as_mut_ptr() as *mut _, chunk_result);
+            vst1q_u8(chunk_dst.as_mut_ptr().cast(), chunk_result);
         }
     }
 
@@ -63,12 +63,12 @@ pub unsafe fn mul_vec_by_scalar_then_add_into(add_into_vec: &mut [u8], mul_vec: 
     let mut mul_vec_iter = mul_vec.chunks_exact(GF256_HALF_ORDER);
 
     unsafe {
-        let l_tbl = vld1q_u8(GF256_SIMD_MUL_TABLE_LOW[scalar as usize].as_ptr() as *const _);
-        let h_tbl = vld1q_u8(GF256_SIMD_MUL_TABLE_HIGH[scalar as usize].as_ptr() as *const _);
+        let l_tbl = vld1q_u8(GF256_SIMD_MUL_TABLE_LOW[scalar as usize].as_ptr().cast());
+        let h_tbl = vld1q_u8(GF256_SIMD_MUL_TABLE_HIGH[scalar as usize].as_ptr().cast());
         let l_mask = vdupq_n_u8(0x0f);
 
         for (add_vec_chunk, mul_vec_chunk) in add_vec_iter.by_ref().zip(mul_vec_iter.by_ref()) {
-            let mul_vec_chunk_simd = vld1q_u8(mul_vec_chunk.as_ptr() as *const _);
+            let mul_vec_chunk_simd = vld1q_u8(mul_vec_chunk.as_ptr().cast());
 
             let chunk_simd_lo = vandq_u8(mul_vec_chunk_simd, l_mask);
             let chunk_simd_lo = vqtbl1q_u8(l_tbl, chunk_simd_lo);
@@ -79,10 +79,10 @@ pub unsafe fn mul_vec_by_scalar_then_add_into(add_into_vec: &mut [u8], mul_vec: 
 
             let scaled_res = veorq_u8(chunk_simd_lo, chunk_simd_hi);
 
-            let add_vec_chunk_simd = vld1q_u8(add_vec_chunk.as_ptr() as *const _);
+            let add_vec_chunk_simd = vld1q_u8(add_vec_chunk.as_ptr().cast());
             let accum_res = veorq_u8(add_vec_chunk_simd, scaled_res);
 
-            vst1q_u8(add_vec_chunk.as_mut_ptr() as *mut _, accum_res);
+            vst1q_u8(add_vec_chunk.as_mut_ptr().cast(), accum_res);
         }
     }
 

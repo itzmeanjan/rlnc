@@ -1,9 +1,9 @@
 [package]
 name = "rlnc"
-version = "0.8.3"
+version = "0.8.4"
 edition = "2024"
 resolver = "3"
-rust-version = "1.85.0"
+rust-version = "1.89.0"
 authors = ["Anjan Roy <hello@itzmeanjan.in>"]
 description = "Random Linear Network Coding"
 readme = "README.md"
