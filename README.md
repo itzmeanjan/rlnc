@@ -1,12 +1,35 @@
 # rlnc
 
-Random Linear Network Coding
+Blazing Fast Erasure-Coding with Random Linear Network Coding (RLNC)
 
 ## Introduction
 
-`rlnc` is a Rust library crate that implements Random Linear Network Coding (RLNC) over $GF(2^8)$ with primitive polynomial $x^8 + x^4 + x^3 + x^2 + 1$. This library provides functionalities for erasure-coding data, reconstructing original data from coded pieces, and recoding existing coded pieces to new erasure-coded pieces, without ever decoding it back to original data.
+`rlnc` is a Rust library crate that implements an advanced erasure-coding technique Random Linear Network Coding (RLNC) over galois field $GF(2^8)$ with irreducible polynomial $x^8 + x^4 + x^3 + x^2 + 1$. This library provides functionalities for blazing fast erasure-coding of data, reconstructing original data from coded pieces, and recoding existing coded pieces to new erasure-coded pieces, without ever decoding it back to original data, using AVX512, AVX2 and SSSE3 intrinsics on `x86_64` and NEON intrinsics on `arm64`, for fast vector multiplication by a single scalar over $GF(2^8)$.
 
-For a quick understanding of RLNC, have a look at my blog post @ <https://itzmeanjan.in/pages/rlnc-in-depth.html>.
+Following charts show performance of RLNC encoder, recoder and decoder on **AWS EC2 `m7i.xlarge` with Intel(R) Xeon(R) Platinum 8488C** - which has AVX512 support. More performance benchmark results [below](#benchmarking).
+
+![rlnc-encoder-on-x86_64_with-avx512](./plots/rlnc-encoder-on-x86_64_with-avx512.png)
+
+![rlnc-recoder-on-x86_64_with-avx512](./plots/rlnc-recoder-on-x86_64_with-avx512.png)
+
+![rlnc-decoder-on-x86_64_with-avx512](./plots/rlnc-decoder-on-x86_64_with-avx512.png)
+
+---
+**Let's take a practical example of how RLNC can be useful.**
+
+Imagine you want to send a book, split into 10 chapters, to a friend over a very unreliable mail service that often loses envelopes.
+
+The old way is to send each of the 10 chapters in a separate envelope. If even 1 envelope gets lost, your friend can't read the whole book. They have to ask you to send that specific missing chapter again, which is slow and inefficient.
+
+Random Linear Network Coding (RLNC) works like this: instead of sending the original chapters, you create 20 new "summary" envelopes. Each summary envelope is a unique, random mix of sentences from all the original 10 chapters. You then mail these 20 summary envelopes.
+
+The magic is that your friend only needs to receive any 10 of these summary envelopes to perfectly reconstruct the entire book. It doesn't matter if the third one you sent gets lost, as long as another one arrives. Because each envelope contains information from the whole book, any 10 of them provide enough clues to solve the puzzle and rebuild the original 10 chapters.
+
+This makes the transfer incredibly robust and efficient, as you don't need to worry about specific envelopes getting lost, just that enough of them make it to the destination.
+
+RLNC can be used for erasure-coding both data-in-transit and data-in-rest - essentially increasing availability of original data by spreading it into many more pieces s.t. each of them is equally important. For a quick understanding of RLNC, have a look at my blog post @ <https://itzmeanjan.in/pages/rlnc-in-depth.html>.
+
+---
 
 Random Linear Network Coding (RLNC) excels in highly dynamic and lossy environments like multicast, peer-to-peer networks, and distributed storage, due to interesting properties such as encoding with random-sampled coefficients, any `k` out of `n` coded-pieces are sufficient to recover and recoding new pieces with existing erasure-coded pieces. Unlike Reed-Solomon, which requires specific symbols for deterministic recovery, RLNC allows decoding from *any* set of linearly independent packets. Compared to Fountain Codes, RLNC offers robust algebraic linearity with coding vector overhead, whereas Fountain codes prioritize very low decoding complexity and indefinite symbol generation, often for large-scale broadcasts.
 
@@ -46,31 +69,34 @@ make test-wasm
 ```
 
 ```bash
-running 14 tests
+running 17 tests
 test full::decoder::tests::test_decoder_decode_invalid_piece_length ... ok
 test full::decoder::tests::test_decoder_new_invalid_inputs ... ok
+test full::encoder::tests::test_encoder_code_with_buf_invalid_inputs ... ok
+test full::decoder_matrix::test::test_swap_rows ... ok
 test full::encoder::tests::test_encoder_code_with_coding_vector_invalid_inputs ... ok
-test full::decoder::tests::test_decoder_getters ... ok
 test full::encoder::tests::test_encoder_getters ... ok
-test full::encoder::tests::test_encoder_without_padding_invalid_data ... ok
+test full::decoder::tests::test_decoder_getters ... ok
 test full::encoder::tests::test_encoder_new_invalid_inputs ... ok
+test full::encoder::tests::test_encoder_without_padding_invalid_data ... ok
 test full::recoder::tests::test_recoder_getters ... ok
 test full::recoder::tests::test_recoder_new_invalid_inputs ... ok
+test full::recoder::tests::test_recoder_recode_with_buf_invalid_inputs ... ok
 test common::gf256::test::prop_test_gf256_operations ... ok
-test full::tests::prop_test_rlnc_encoder_decoder ... ok
 test full::decoder_matrix::test::prop_test_rref_is_idempotent ... ok
-test full::tests::prop_test_rlnc_encoder_recoder_decoder ... ok
-test full::tests::prop_test_rlnc_decoding_with_useless_pieces has been running for over 60 seconds
+test full::tests::prop_test_rlnc_encoder_decoder ... ok
 test full::tests::prop_test_rlnc_decoding_with_useless_pieces ... ok
+test full::tests::prop_test_rlnc_encoder_recoder_decoder has been running for over 60 seconds
+test full::tests::prop_test_rlnc_encoder_recoder_decoder ... ok
 
-test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 63.59s
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 72.24s
 
    Doc-tests rlnc
 
 running 3 tests
-test src/common/simd_mul_table.rs - common::simd_mul_table (line 22) ... ignored
+test src/common/simd_mul_table.rs - common::simd_mul_table (line 25) ... ignored
 test src/common/simd_mul_table.rs - common::simd_mul_table (line 8) ... ignored
-test src/lib.rs - (line 49) ... ok
+test src/lib.rs - (line 58) ... ok
 
 test result: ok. 1 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
@@ -119,6 +145,8 @@ make bench # First with `default` feature, then with `parallel` feature enabled.
 
 > [!WARNING]
 > When benchmarking make sure you've disabled CPU frequency scaling, otherwise numbers you see can be misleading. I find <https://github.com/google/benchmark/blob/b40db869/docs/reducing_variance.md> helpful.
+
+For visualizing benchmark results see [plots](./plots) directory.
 
 ### On 12th Gen Intel(R) Core(TM) i7-1260P
 
