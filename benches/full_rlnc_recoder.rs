@@ -1,5 +1,5 @@
 use rand::Rng;
-use rlnc::full::{encoder::Encoder, recoder::Recoder};
+use rlnc::full::{Encoder, Recoder};
 use std::{fmt::Debug, time::Duration};
 
 #[global_allocator]
@@ -31,7 +31,7 @@ fn bytes_to_human_readable(bytes: usize) -> String {
 impl Debug for RLNCConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&format!(
-            "{} data splitted into {} pieces, recoding with {} pieces",
+            "{} data split into {} pieces, recoding with {} pieces",
             &bytes_to_human_readable(self.data_byte_len),
             self.piece_count,
             self.recoding_with_piece_count
@@ -119,36 +119,55 @@ const ARGS: &[RLNCConfig] = &[
 
 #[divan::bench(args = ARGS, max_time = Duration::from_secs(100), skip_ext_time = true)]
 fn recode(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
+    let mut rng = rand::rng();
+    let data = (0..rlnc_config.data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
+
+    let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create RLNC encoder");
+    let coded_pieces = (0..rlnc_config.recoding_with_piece_count)
+        .flat_map(|_| encoder.code(&mut rng))
+        .collect::<Vec<u8>>();
+
     bencher
-        // --- 1. SETUP ---
-        // Create all the necessary inputs once.
         .with_inputs(|| {
-            let mut rng = rand::rng();
-
-            // We need an encoder to generate some pieces for the recoder to use.
-            let data = (0..rlnc_config.data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
-            let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create encoder for recoder bench");
-
-            // Generate some coded pieces to initialize the recoder.
-            let num_pieces_for_recoder = rlnc_config.piece_count / 2;
-            let coded_pieces: Vec<u8> = (0..num_pieces_for_recoder).flat_map(|_| encoder.code(&mut rng)).collect();
-
-            // Create the Recoder instance. This now allocates its own internal workspace buffers.
-            let recoder =
-                Recoder::new(coded_pieces, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC recoder");
-
-            // Pre-allocate the final output buffer that will be reused in the hot loop.
-            let output_buffer = vec![0u8; recoder.get_full_coded_piece_byte_len()];
-
-            (rng, recoder, output_buffer)
+            (
+                rand::rng(),
+                Recoder::new(coded_pieces.clone(), encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC recoder"),
+            )
         })
-        // --- 2. THE BENCHMARK LOOP ---
-        // Use `bench_local_refs` to get mutable access.
-        .bench_local_refs(|(rng, recoder, output_buffer)| {
-            // Call the new zero-copy recode function.
-            recoder.recode(rng, output_buffer).unwrap();
+        .input_counter(|(_, recoder)| {
+            divan::counter::BytesCount::new(
+                recoder.get_full_coded_piece_byte_len() * recoder.get_num_pieces_recoded_together() + // Number of bytes used as input to recoder
+                recoder.get_full_coded_piece_byte_len(), // Number of bytes for each recoded piece
+            )
+        })
+        .bench_refs(|(rng, recoder)| divan::black_box(divan::black_box(recoder).recode(divan::black_box(rng))));
+}
 
-            // Black-box the result to prevent optimizations.
-            divan::black_box(output_buffer);
+#[divan::bench(args = ARGS, max_time = Duration::from_secs(100), skip_ext_time = true)]
+fn recode_zero_alloc(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
+    let mut rng = rand::rng();
+    let data = (0..rlnc_config.data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
+
+    let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create RLNC encoder");
+    let coded_pieces = (0..rlnc_config.recoding_with_piece_count)
+        .flat_map(|_| encoder.code(&mut rng))
+        .collect::<Vec<u8>>();
+
+    bencher
+        .with_inputs(|| {
+            (
+                rand::rng(),
+                Recoder::new(coded_pieces.clone(), encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC recoder"),
+                vec![0u8; encoder.get_full_coded_piece_byte_len()],
+            )
+        })
+        .input_counter(|(_, recoder, _)| {
+            divan::counter::BytesCount::new(
+                recoder.get_full_coded_piece_byte_len() * recoder.get_num_pieces_recoded_together() + // Number of bytes used as input to recoder
+                recoder.get_full_coded_piece_byte_len(), // Number of bytes for each recoded piece
+            )
+        })
+        .bench_refs(|(rng, recoder, recoded_piece)| {
+            divan::black_box(divan::black_box(recoder).recode_with_buf(divan::black_box(rng), divan::black_box(recoded_piece)))
         });
 }

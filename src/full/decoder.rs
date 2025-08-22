@@ -1,10 +1,10 @@
 use super::consts::BOUNDARY_MARKER;
 use crate::{RLNCError, full::decoder_matrix::DecoderMatrix};
 
-/// Random Linear Network Code (RLNC) Decoder.
+/// Random Linear Network Coding (RLNC) Decoder.
 ///
-/// This struct manages the received coded pieces and performs Gaussian
-/// elimination to recover the original data.
+/// This struct manages the received coded pieces and repeatedly performs Gaussian elimination
+/// to recover the original data, validating padding.
 #[derive(Clone, Debug)]
 pub struct Decoder {
     /// Stores the coefficient matrix and coded data rows concatenated.
@@ -21,12 +21,12 @@ pub struct Decoder {
 }
 
 impl Decoder {
-    /// Number of pieces original data got splitted into and coded together.
+    /// Number of pieces original data got split into and coded together.
     pub fn get_num_pieces_coded_together(&self) -> usize {
         self.required_piece_count
     }
 
-    /// After padding the original data, it gets splitted into `self.get_num_pieces_coded_together()` many pieces, which results into these many bytes per piece.
+    /// After padding the original data, it gets split into `self.get_num_pieces_coded_together()` many pieces, which results into these many bytes per piece.
     pub fn get_piece_byte_len(&self) -> usize {
         self.piece_byte_len
     }
@@ -59,9 +59,9 @@ impl Decoder {
     ///   needed for decoding (equivalent to the number of original pieces).
     ///
     /// # Returns
-    /// Returns `Ok(Decoder)` on successful creation.
-    /// Returns `Err(RLNCError::PieceLengthZero)` if `piece_byte_len` is zero.
-    /// Returns `Err(RLNCError::PieceCountZero)` if `required_piece_count` is zero.
+    /// * Returns `Ok(Decoder)` on successful creation.
+    /// * Returns `Err(RLNCError::PieceLengthZero)` if `piece_byte_len` is zero.
+    /// * Returns `Err(RLNCError::PieceCountZero)` if `required_piece_count` is zero.
     pub fn new(piece_byte_len: usize, required_piece_count: usize) -> Result<Decoder, RLNCError> {
         if piece_byte_len == 0 {
             return Err(RLNCError::PieceLengthZero);
@@ -89,11 +89,10 @@ impl Decoder {
     ///   the coded data for one piece. Its length must be `required_piece_count + piece_byte_len`.
     ///
     /// # Returns
-    /// Returns `Ok(())` if the piece was useful and added successfully.
-    /// Returns `Err(RLNCError::ReceivedAllPieces)` if decoding is already complete.
-    /// Returns `Err(RLNCError::PieceNotUseful)` if the piece was linearly
-    /// dependent on the already received useful pieces.
-    /// Returns `Err(RLNCError::InvalidPieceLength)` if the `full_coded_piece` has an unexpected length.
+    /// * Returns `Ok(())` if the piece was useful and added successfully.
+    /// * Returns `Err(RLNCError::ReceivedAllPieces)` if decoding is already complete.
+    /// * Returns `Err(RLNCError::PieceNotUseful)` if the piece was linearly dependent on the already received useful pieces.
+    /// * Returns `Err(RLNCError::InvalidPieceLength)` if the `full_coded_piece` has an unexpected length.
     pub fn decode(&mut self, full_coded_piece: &[u8]) -> Result<(), RLNCError> {
         if self.is_already_decoded() {
             return Err(RLNCError::ReceivedAllPieces);
@@ -118,8 +117,7 @@ impl Decoder {
         }
     }
 
-    /// Checks if the decoder has received enough linearly independent pieces
-    /// to recover the original data.
+    /// Checks if the decoder has received enough linearly independent pieces to recover the original data.
     pub fn is_already_decoded(&self) -> bool {
         self.matrix.rank() == self.required_piece_count
     }
@@ -132,11 +130,9 @@ impl Decoder {
     /// determine the original data length and trims padding.
     ///
     /// # Returns
-    /// Returns `Ok(Vec<u8>)` containing the decoded data if successful.
-    /// Returns `Err(RLNCError::NotAllPiecesReceivedYet)` if not enough useful
-    /// pieces have been received.
-    /// Returns `Err(RLNCError::InvalidDecodedDataFormat)` if the extracted data
-    /// does not follow the expected format (e.g., boundary marker issues).
+    /// * Returns `Ok(Vec<u8>)` containing the decoded data if successful.
+    /// * Returns `Err(RLNCError::NotAllPiecesReceivedYet)` if not enough useful pieces have been received.
+    /// * Returns `Err(RLNCError::InvalidDecodedDataFormat)` if the extracted data does not follow the expected format (e.g., boundary marker issues).
     pub fn get_decoded_data(self) -> Result<Vec<u8>, RLNCError> {
         if !self.is_already_decoded() {
             return Err(RLNCError::NotAllPiecesReceivedYet);
@@ -162,13 +158,11 @@ impl Decoder {
         Ok(buf)
     }
 
-    /// Helper to find the boundary marker, validate padding,
-    /// and return the final length of the original data.
+    /// Helper to find the boundary marker, validate padding, and return the final length of the original data.
     fn get_final_data_len(padded_data: &[u8]) -> Result<usize, RLNCError> {
         let last_index = padded_data.len().saturating_sub(1);
 
         let boundary_marker_rev_index = padded_data.iter().rev().position(|&byte| byte == BOUNDARY_MARKER).unwrap_or(last_index);
-
         let boundary_marker_index = last_index - boundary_marker_rev_index;
 
         if boundary_marker_index == 0 {
