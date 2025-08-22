@@ -1,0 +1,648 @@
+diff --git a/benches/full_rlnc_decoder.rs b/benches/full_rlnc_decoder.rs
+index 16bcc57..e76312a 100644
+--- a/benches/full_rlnc_decoder.rs
++++ b/benches/full_rlnc_decoder.rs
+@@ -5,8 +5,8 @@ use rlnc::{
+ };
+ use std::{fmt::Debug, time::Duration};
+ 
+-#[global_allocator]
+-static ALLOC: divan::AllocProfiler = divan::AllocProfiler::system();
++// #[global_allocator]
++// static ALLOC: divan::AllocProfiler = divan::AllocProfiler::system();
+ 
+ fn main() {
+     divan::Divan::default().bytes_format(divan::counter::BytesFormat::Binary).main();
+@@ -41,6 +41,14 @@ impl Debug for RLNCConfig {
+ }
+ 
+ const ARGS: &[RLNCConfig] = &[
++    RLNCConfig {
++        data_byte_len: 1usize << 20,
++        piece_count: 1usize << 2,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 20,
++        piece_count: 1usize << 3,
++    },
+     RLNCConfig {
+         data_byte_len: 1usize << 20,
+         piece_count: 1usize << 4,
+@@ -61,6 +69,82 @@ const ARGS: &[RLNCConfig] = &[
+         data_byte_len: 1usize << 20,
+         piece_count: 1usize << 8,
+     },
++    RLNCConfig {
++        data_byte_len: 1usize << 20,
++        piece_count: 1usize << 9,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 2,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 3,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 4,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 5,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 6,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 7,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 8,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 9,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 2,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 3,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 4,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 5,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 6,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 7,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 8,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 9,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 24,
++        piece_count: 1usize << 2,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 24,
++        piece_count: 1usize << 3,
++    },
+     RLNCConfig {
+         data_byte_len: 1usize << 24,
+         piece_count: 1usize << 4,
+@@ -81,6 +165,18 @@ const ARGS: &[RLNCConfig] = &[
+         data_byte_len: 1usize << 24,
+         piece_count: 1usize << 8,
+     },
++    RLNCConfig {
++        data_byte_len: 1usize << 24,
++        piece_count: 1usize << 9,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 25,
++        piece_count: 1usize << 2,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 25,
++        piece_count: 1usize << 3,
++    },
+     RLNCConfig {
+         data_byte_len: 1usize << 25,
+         piece_count: 1usize << 4,
+@@ -101,6 +197,42 @@ const ARGS: &[RLNCConfig] = &[
+         data_byte_len: 1usize << 25,
+         piece_count: 1usize << 8,
+     },
++    RLNCConfig {
++        data_byte_len: 1usize << 25,
++        piece_count: 1usize << 9,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 2,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 3,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 4,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 5,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 6,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 7,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 8,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 9,
++    },
+ ];
+ 
+ #[divan::bench(args = ARGS, max_time = Duration::from_secs(100), skip_ext_time = true)]
+diff --git a/benches/full_rlnc_encoder.rs b/benches/full_rlnc_encoder.rs
+index fb95bee..cf2bce0 100644
+--- a/benches/full_rlnc_encoder.rs
++++ b/benches/full_rlnc_encoder.rs
+@@ -2,8 +2,8 @@ use rand::Rng;
+ use rlnc::full::Encoder;
+ use std::{fmt::Debug, time::Duration};
+ 
+-#[global_allocator]
+-static ALLOC: divan::AllocProfiler = divan::AllocProfiler::system();
++// #[global_allocator]
++// static ALLOC: divan::AllocProfiler = divan::AllocProfiler::system();
+ 
+ fn main() {
+     divan::Divan::default().bytes_format(divan::counter::BytesFormat::Binary).main();
+@@ -38,6 +38,14 @@ impl Debug for RLNCConfig {
+ }
+ 
+ const ARGS: &[RLNCConfig] = &[
++    RLNCConfig {
++        data_byte_len: 1usize << 20,
++        piece_count: 1usize << 2,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 20,
++        piece_count: 1usize << 3,
++    },
+     RLNCConfig {
+         data_byte_len: 1usize << 20,
+         piece_count: 1usize << 4,
+@@ -58,6 +66,82 @@ const ARGS: &[RLNCConfig] = &[
+         data_byte_len: 1usize << 20,
+         piece_count: 1usize << 8,
+     },
++    RLNCConfig {
++        data_byte_len: 1usize << 20,
++        piece_count: 1usize << 9,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 2,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 3,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 4,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 5,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 6,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 7,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 8,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 9,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 2,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 3,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 4,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 5,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 6,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 7,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 8,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 9,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 24,
++        piece_count: 1usize << 2,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 24,
++        piece_count: 1usize << 3,
++    },
+     RLNCConfig {
+         data_byte_len: 1usize << 24,
+         piece_count: 1usize << 4,
+@@ -78,6 +162,18 @@ const ARGS: &[RLNCConfig] = &[
+         data_byte_len: 1usize << 24,
+         piece_count: 1usize << 8,
+     },
++    RLNCConfig {
++        data_byte_len: 1usize << 24,
++        piece_count: 1usize << 9,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 25,
++        piece_count: 1usize << 2,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 25,
++        piece_count: 1usize << 3,
++    },
+     RLNCConfig {
+         data_byte_len: 1usize << 25,
+         piece_count: 1usize << 4,
+@@ -98,6 +194,42 @@ const ARGS: &[RLNCConfig] = &[
+         data_byte_len: 1usize << 25,
+         piece_count: 1usize << 8,
+     },
++    RLNCConfig {
++        data_byte_len: 1usize << 25,
++        piece_count: 1usize << 9,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 2,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 3,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 4,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 5,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 6,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 7,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 8,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 9,
++    },
+ ];
+ 
+ #[divan::bench(args = ARGS, max_time = Duration::from_secs(100), skip_ext_time = true)]
+@@ -116,18 +248,18 @@ fn encode(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
+         .bench_refs(|rng| divan::black_box(divan::black_box(&encoder).code(divan::black_box(rng))));
+ }
+ 
+-#[divan::bench(args = ARGS, max_time = Duration::from_secs(100), skip_ext_time = true)]
+-fn encode_zero_alloc(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
+-    let mut rng = rand::rng();
+-    let data = (0..rlnc_config.data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
++// #[divan::bench(args = ARGS, max_time = Duration::from_secs(100), skip_ext_time = true)]
++// fn encode_zero_alloc(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
++//     let mut rng = rand::rng();
++//     let data = (0..rlnc_config.data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
+ 
+-    let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create RLNC encoder");
++//     let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create RLNC encoder");
+ 
+-    bencher
+-        .counter(divan::counter::BytesCount::new(
+-            encoder.get_piece_byte_len() * encoder.get_piece_count() +  // Number of bytes used as input to encoder
+-            encoder.get_full_coded_piece_byte_len(), // Number of bytes for each coded piece
+-        ))
+-        .with_inputs(|| (rand::rng(), vec![0u8; encoder.get_full_coded_piece_byte_len()]))
+-        .bench_refs(|(rng, coded_piece)| divan::black_box(&encoder).code_with_buf(divan::black_box(rng), divan::black_box(coded_piece)));
+-}
++//     bencher
++//         .counter(divan::counter::BytesCount::new(
++//             encoder.get_piece_byte_len() * encoder.get_piece_count() +  // Number of bytes used as input to encoder
++//             encoder.get_full_coded_piece_byte_len(), // Number of bytes for each coded piece
++//         ))
++//         .with_inputs(|| (rand::rng(), vec![0u8; encoder.get_full_coded_piece_byte_len()]))
++//         .bench_refs(|(rng, coded_piece)| divan::black_box(&encoder).code_with_buf(divan::black_box(rng), divan::black_box(coded_piece)));
++// }
+diff --git a/benches/full_rlnc_recoder.rs b/benches/full_rlnc_recoder.rs
+index 65092b1..33cf2ad 100644
+--- a/benches/full_rlnc_recoder.rs
++++ b/benches/full_rlnc_recoder.rs
+@@ -2,8 +2,8 @@ use rand::Rng;
+ use rlnc::full::{Encoder, Recoder};
+ use std::{fmt::Debug, time::Duration};
+ 
+-#[global_allocator]
+-static ALLOC: divan::AllocProfiler = divan::AllocProfiler::system();
++// #[global_allocator]
++// static ALLOC: divan::AllocProfiler = divan::AllocProfiler::system();
+ 
+ fn main() {
+     divan::Divan::default().bytes_format(divan::counter::BytesFormat::Binary).main();
+@@ -40,6 +40,16 @@ impl Debug for RLNCConfig {
+ }
+ 
+ const ARGS: &[RLNCConfig] = &[
++    RLNCConfig {
++        data_byte_len: 1usize << 20,
++        piece_count: 1usize << 2,
++        recoding_with_piece_count: 1usize << 1,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 20,
++        piece_count: 1usize << 3,
++        recoding_with_piece_count: 1usize << 2,
++    },
+     RLNCConfig {
+         data_byte_len: 1usize << 20,
+         piece_count: 1usize << 4,
+@@ -65,6 +75,101 @@ const ARGS: &[RLNCConfig] = &[
+         piece_count: 1usize << 8,
+         recoding_with_piece_count: 1usize << 7,
+     },
++    RLNCConfig {
++        data_byte_len: 1usize << 20,
++        piece_count: 1usize << 9,
++        recoding_with_piece_count: 1usize << 8,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 2,
++        recoding_with_piece_count: 1usize << 1,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 3,
++        recoding_with_piece_count: 1usize << 2,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 4,
++        recoding_with_piece_count: 1usize << 3,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 5,
++        recoding_with_piece_count: 1usize << 4,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 6,
++        recoding_with_piece_count: 1usize << 5,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 7,
++        recoding_with_piece_count: 1usize << 6,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 8,
++        recoding_with_piece_count: 1usize << 7,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 22,
++        piece_count: 1usize << 9,
++        recoding_with_piece_count: 1usize << 8,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 2,
++        recoding_with_piece_count: 1usize << 1,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 3,
++        recoding_with_piece_count: 1usize << 2,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 4,
++        recoding_with_piece_count: 1usize << 3,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 5,
++        recoding_with_piece_count: 1usize << 4,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 6,
++        recoding_with_piece_count: 1usize << 5,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 7,
++        recoding_with_piece_count: 1usize << 6,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 8,
++        recoding_with_piece_count: 1usize << 7,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 23,
++        piece_count: 1usize << 9,
++        recoding_with_piece_count: 1usize << 8,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 24,
++        piece_count: 1usize << 2,
++        recoding_with_piece_count: 1usize << 1,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 24,
++        piece_count: 1usize << 3,
++        recoding_with_piece_count: 1usize << 2,
++    },
+     RLNCConfig {
+         data_byte_len: 1usize << 24,
+         piece_count: 1usize << 4,
+@@ -90,6 +195,21 @@ const ARGS: &[RLNCConfig] = &[
+         piece_count: 1usize << 8,
+         recoding_with_piece_count: 1usize << 7,
+     },
++    RLNCConfig {
++        data_byte_len: 1usize << 24,
++        piece_count: 1usize << 9,
++        recoding_with_piece_count: 1usize << 8,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 25,
++        piece_count: 1usize << 2,
++        recoding_with_piece_count: 1usize << 1,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 25,
++        piece_count: 1usize << 3,
++        recoding_with_piece_count: 1usize << 2,
++    },
+     RLNCConfig {
+         data_byte_len: 1usize << 25,
+         piece_count: 1usize << 4,
+@@ -115,6 +235,51 @@ const ARGS: &[RLNCConfig] = &[
+         piece_count: 1usize << 8,
+         recoding_with_piece_count: 1usize << 7,
+     },
++    RLNCConfig {
++        data_byte_len: 1usize << 25,
++        piece_count: 1usize << 9,
++        recoding_with_piece_count: 1usize << 8,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 2,
++        recoding_with_piece_count: 1usize << 1,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 3,
++        recoding_with_piece_count: 1usize << 2,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 4,
++        recoding_with_piece_count: 1usize << 3,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 5,
++        recoding_with_piece_count: 1usize << 4,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 6,
++        recoding_with_piece_count: 1usize << 5,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 7,
++        recoding_with_piece_count: 1usize << 6,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 8,
++        recoding_with_piece_count: 1usize << 7,
++    },
++    RLNCConfig {
++        data_byte_len: 1usize << 26,
++        piece_count: 1usize << 9,
++        recoding_with_piece_count: 1usize << 8,
++    },
+ ];
+ 
+ #[divan::bench(args = ARGS, max_time = Duration::from_secs(100), skip_ext_time = true)]
+@@ -143,31 +308,31 @@ fn recode(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
+         .bench_refs(|(rng, recoder)| divan::black_box(divan::black_box(recoder).recode(divan::black_box(rng))));
+ }
+ 
+-#[divan::bench(args = ARGS, max_time = Duration::from_secs(100), skip_ext_time = true)]
+-fn recode_zero_alloc(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
+-    let mut rng = rand::rng();
+-    let data = (0..rlnc_config.data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
++// #[divan::bench(args = ARGS, max_time = Duration::from_secs(100), skip_ext_time = true)]
++// fn recode_zero_alloc(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
++//     let mut rng = rand::rng();
++//     let data = (0..rlnc_config.data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
+ 
+-    let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create RLNC encoder");
+-    let coded_pieces = (0..rlnc_config.recoding_with_piece_count)
+-        .flat_map(|_| encoder.code(&mut rng))
+-        .collect::<Vec<u8>>();
++//     let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create RLNC encoder");
++//     let coded_pieces = (0..rlnc_config.recoding_with_piece_count)
++//         .flat_map(|_| encoder.code(&mut rng))
++//         .collect::<Vec<u8>>();
+ 
+-    bencher
+-        .with_inputs(|| {
+-            (
+-                rand::rng(),
+-                Recoder::new(coded_pieces.clone(), encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC recoder"),
+-                vec![0u8; encoder.get_full_coded_piece_byte_len()],
+-            )
+-        })
+-        .input_counter(|(_, recoder, _)| {
+-            divan::counter::BytesCount::new(
+-                recoder.get_full_coded_piece_byte_len() * recoder.get_num_pieces_recoded_together() + // Number of bytes used as input to recoder
+-                recoder.get_full_coded_piece_byte_len(), // Number of bytes for each recoded piece
+-            )
+-        })
+-        .bench_refs(|(rng, recoder, recoded_piece)| {
+-            divan::black_box(divan::black_box(recoder).recode_with_buf(divan::black_box(rng), divan::black_box(recoded_piece)))
+-        });
+-}
++//     bencher
++//         .with_inputs(|| {
++//             (
++//                 rand::rng(),
++//                 Recoder::new(coded_pieces.clone(), encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC recoder"),
++//                 vec![0u8; encoder.get_full_coded_piece_byte_len()],
++//             )
++//         })
++//         .input_counter(|(_, recoder, _)| {
++//             divan::counter::BytesCount::new(
++//                 recoder.get_full_coded_piece_byte_len() * recoder.get_num_pieces_recoded_together() + // Number of bytes used as input to recoder
++//                 recoder.get_full_coded_piece_byte_len(), // Number of bytes for each recoded piece
++//             )
++//         })
++//         .bench_refs(|(rng, recoder, recoded_piece)| {
++//             divan::black_box(divan::black_box(recoder).recode_with_buf(divan::black_box(rng), divan::black_box(recoded_piece)))
++//         });
++// }
