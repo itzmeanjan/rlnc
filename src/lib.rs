@@ -115,7 +115,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! rlnc = "=0.8.3"                                      # On x86 and aarch64 targets, it offers fast encoding, recoding and decoding, using SIMD intrinsics.
+//! rlnc = "=0.8.3"                                      # On x86_64 and aarch64 targets, it offers fast encoding, recoding and decoding, using SIMD intrinsics.
 //! # or
 //! rlnc = { version = "=0.8.3", features = "parallel" } # Uses `rayon`-based data-parallelism for fast encoding/ recoding. Decoding is not yet parallelized.
 //!
