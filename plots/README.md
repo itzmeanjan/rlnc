@@ -48,10 +48,26 @@ All scripts are inside [scripts](./scripts) directory.
 
 ---
 
-Plots generated with benchmark result of running RLNC encoder, recoder and decoder on x86_64 target with AVX2 feature.
+## Performance Benchmarking on x86_64 with AVX2
 
 ![rlnc-encoder-on-x86_64-with-avx2](./rlnc-encoder-on-x86_64_with-avx2.png)
 
 ![rlnc-recoder-on-x86_64-with-avx2](./rlnc-recoder-on-x86_64_with-avx2.png)
 
 ![rlnc-decoder-on-x86_64-with-avx2](./rlnc-decoder-on-x86_64_with-avx2.png)
+
+## Performance Benchmarking on Intel x86_64 with AV512
+
+![rlnc-encoder-on-x86_64-with-intel-avx512](./rlnc-encoder-on-x86_64_with-intel-avx512.png)
+
+![rlnc-recoder-on-x86_64-with-intel-avx512](./rlnc-recoder-on-x86_64_with-intel-avx512.png)
+
+![rlnc-decoder-on-x86_64-with-intel-avx512](./rlnc-decoder-on-x86_64_with-intel-avx512.png)
+
+## Performance Benchmarking on AMD x86_64 with AV512
+
+![rlnc-encoder-on-x86_64-with-amd-avx512](./rlnc-encoder-on-x86_64_with-amd-avx512.png)
+
+![rlnc-recoder-on-x86_64-with-amd-avx512](./rlnc-recoder-on-x86_64_with-amd-avx512.png)
+
+![rlnc-decoder-on-x86_64-with-amd-avx512](./rlnc-decoder-on-x86_64_with-amd-avx512.png)
