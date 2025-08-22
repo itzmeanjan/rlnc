@@ -19,7 +19,7 @@
 3. Apply git patch [visualize-plot-bench-result.patch](./visualize-plot-bench-result.patch) to extend benchmark input parameter set of RLNC encoder, recoder and decoder. This patch also disables custom memory allocator which can track memory allocation when benchmarking encoding, recoding or decoding. But for plotting purposes, we are only interested in throughput for various input configurations, so we can safely disable everything else.
 
     ```bash
-    # This patch was generated on git tag v0.8.3 of this crate
+    # This patch was generated on git tag v0.8.4 of this crate
     # If the benchmark files are not touched after that, this patch should work.
     git apply plots/scripts/visualize-plot-bench-result.patch
     ```
