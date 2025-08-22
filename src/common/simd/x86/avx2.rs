@@ -4,20 +4,18 @@ use crate::common::{
 };
 
 #[cfg(target_arch = "x86")]
-use std::arch::x86::{_mm256_and_si256, _mm256_lddqu_si256, _mm256_set1_epi8, _mm256_shuffle_epi8, _mm256_srli_epi64, _mm256_storeu_si256, _mm256_xor_si256};
+use std::arch::x86::*;
 
 #[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::{
-    _mm256_and_si256, _mm256_lddqu_si256, _mm256_set1_epi8, _mm256_shuffle_epi8, _mm256_srli_epi64, _mm256_storeu_si256, _mm256_xor_si256,
-};
+use std::arch::x86_64::*;
 
 #[target_feature(enable = "avx2")]
 pub unsafe fn mul_vec_by_scalar(vec: &mut [u8], scalar: u8) {
     let mut iter = vec.chunks_exact_mut(2 * GF256_HALF_ORDER);
 
     unsafe {
-        let l_tbl = _mm256_lddqu_si256(GF256_SIMD_MUL_TABLE_LOW[scalar as usize].as_ptr() as *const _);
-        let h_tbl = _mm256_lddqu_si256(GF256_SIMD_MUL_TABLE_HIGH[scalar as usize].as_ptr() as *const _);
+        let l_tbl = _mm256_broadcastsi128_si256(_mm_lddqu_si128(GF256_SIMD_MUL_TABLE_LOW[scalar as usize].as_ptr() as *const _));
+        let h_tbl = _mm256_broadcastsi128_si256(_mm_lddqu_si128(GF256_SIMD_MUL_TABLE_HIGH[scalar as usize].as_ptr() as *const _));
         let l_mask = _mm256_set1_epi8(0x0f);
 
         for chunk in iter.by_ref() {
@@ -69,8 +67,8 @@ pub unsafe fn mul_vec_by_scalar_then_add_into(add_into_vec: &mut [u8], mul_vec: 
     let mut mul_vec_iter = mul_vec.chunks_exact(2 * GF256_HALF_ORDER);
 
     unsafe {
-        let l_tbl = _mm256_lddqu_si256(GF256_SIMD_MUL_TABLE_LOW[scalar as usize].as_ptr() as *const _);
-        let h_tbl = _mm256_lddqu_si256(GF256_SIMD_MUL_TABLE_HIGH[scalar as usize].as_ptr() as *const _);
+        let l_tbl = _mm256_broadcastsi128_si256(_mm_lddqu_si128(GF256_SIMD_MUL_TABLE_LOW[scalar as usize].as_ptr() as *const _));
+        let h_tbl = _mm256_broadcastsi128_si256(_mm_lddqu_si128(GF256_SIMD_MUL_TABLE_HIGH[scalar as usize].as_ptr() as *const _));
         let l_mask = _mm256_set1_epi8(0x0f);
 
         for (add_vec_chunk, mul_vec_chunk) in add_vec_iter.by_ref().zip(mul_vec_iter.by_ref()) {
