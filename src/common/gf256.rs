@@ -47,8 +47,8 @@ const GF256_EXP_TABLE: [u8; 2 * GF256_ORDER - 2] = [
 ///
 /// This type represents elements of the Galois Field GF(2^8), which is commonly used in coding theory, cryptography, and error correction codes.
 /// It supports basic arithmetic operations such as addition, subtraction, multiplication, and division.
-/// The operations are defined over the finite field GF(2^8) with the irreducible polynomial x^8 + x^4 + x^3 + x^2 + 1
-/// and the primitive element x = 2.
+/// The operations are defined over the finite field GF(2^8) with the irreducible polynomial x^8 + x^4 + x^3 + x + 1
+/// and the primitive element x = 3.
 ///
 /// We assign the `transparent` attribute to ensure that the Rust compiler representation of `Gf256` is the same as its underlying `u8` value,
 /// providing a guarantee that it can be used interchangeably with `u8` in contexts where the underlying value is needed.
