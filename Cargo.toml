@@ -1,6 +1,6 @@
 [package]
 name = "rlnc"
-version = "0.8.4"
+version = "0.8.5"
 edition = "2024"
 resolver = "3"
 rust-version = "1.89.0"
