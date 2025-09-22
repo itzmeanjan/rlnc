@@ -243,10 +243,10 @@ impl Encoder {
             return Err(RLNCError::InvalidOutputBuffer);
         }
 
-        let (coding_vector, mut coded_data) = full_coded_piece.split_at_mut(self.piece_count);
+        let (coding_vector, coded_data) = full_coded_piece.split_at_mut(self.piece_count);
 
         rng.fill_bytes(coding_vector);
-        self.code_with_coding_vector(&coding_vector, &mut coded_data)
+        self.code_with_coding_vector(coding_vector, coded_data)
     }
 
     /// Produces a new coded piece, random sampling a coding vector.
