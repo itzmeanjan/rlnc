@@ -4,15 +4,15 @@ Blazing Fast Erasure-Coding with Random Linear Network Coding (RLNC)
 
 ## Introduction
 
-`rlnc` is a Rust library crate that implements an advanced erasure-coding technique Random Linear Network Coding (RLNC) over galois field $GF(2^8)$ with irreducible polynomial $x^8 + x^4 + x^3 + x^2 + 1$. This library provides functionalities for blazing fast erasure-coding of data, reconstructing original data from coded pieces, and recoding existing coded pieces to new erasure-coded pieces, without ever decoding it back to original data, using AVX512, AVX2 and SSSE3 intrinsics on `x86_64` and NEON intrinsics on `arm64`, for fast vector multiplication by a single scalar over $GF(2^8)$.
+`rlnc` is a Rust library crate that implements an advanced erasure-coding technique Random Linear Network Coding (RLNC) over galois field $GF(2^8)$ with irreducible polynomial $x^8 + x^4 + x^3 + x + 1$. This library provides functionalities for blazing fast erasure-coding of data, reconstructing original data from coded pieces, and recoding existing coded pieces to new erasure-coded pieces, without ever decoding it back to original data. It performs runtime introspection of platform and uses the best of GFNI, AVX512, AVX2 and SSSE3 intrinsics on `x86_64` and NEON intrinsics on `arm64`, for fast vector multiplication by a single scalar over $GF(2^8)$.
 
-Following charts show performance of RLNC encoder, recoder and decoder on **AWS EC2 `m7a.large` with AMD EPYC 9R14** - which has AVX512 support. More performance benchmark results [below](#benchmarking).
+Following charts show performance of RLNC encoder, recoder and decoder on **AWS EC2 `m7a.large` with AMD EPYC 9R14** - which has GFNI + AVX512 support. More performance benchmark results [below](#benchmarking).
 
-![rlnc-encoder-on-x86_64_with-amd-avx512](./plots/rlnc-encoder-on-x86_64_with-amd-avx512.png)
+![rlnc-encoder-on-x86_64_with-amd-gfni](./plots/rlnc-encoder-on-x86_64_with-amd-gfni.png)
 
-![rlnc-recoder-on-x86_64_with-amd-avx512](./plots/rlnc-recoder-on-x86_64_with-amd-avx512.png)
+![rlnc-recoder-on-x86_64_with-amd-gfni](./plots/rlnc-recoder-on-x86_64_with-amd-gfni.png)
 
-![rlnc-decoder-on-x86_64_with-amd-avx512](./plots/rlnc-decoder-on-x86_64_with-amd-avx512.png)
+![rlnc-decoder-on-x86_64_with-amd-gfni](./plots/rlnc-decoder-on-x86_64_with-amd-gfni.png)
 
 ---
 **Let's take a practical example of how RLNC can be useful.**
@@ -116,16 +116,20 @@ Coverage Results:
 || Tested/Total Lines:
 || src/common/errors.rs: 0/1
 || src/common/gf256.rs: 9/11
-|| src/common/simd/mod.rs: 6/9
+|| src/common/simd/mod.rs: 8/12
 || src/common/simd/x86/avx2.rs: 10/10
-|| src/common/simd/x86/mod.rs: 6/15
+|| src/common/simd/x86/avx512.rs: 0/10
+|| src/common/simd/x86/gfni/m128i.rs: 0/5
+|| src/common/simd/x86/gfni/m256i.rs: 0/5
+|| src/common/simd/x86/gfni/m512i.rs: 0/5
+|| src/common/simd/x86/mod.rs: 18/33
 || src/common/simd/x86/ssse3.rs: 0/10
-|| src/full/decoder.rs: 25/32
+|| src/full/decoder.rs: 26/31
 || src/full/decoder_matrix.rs: 51/58
-|| src/full/encoder.rs: 24/27
-|| src/full/recoder.rs: 28/36
+|| src/full/encoder.rs: 25/33
+|| src/full/recoder.rs: 27/39
 ||
-76.08% coverage, 159/209 lines covered
+66.16% coverage, 174/263 lines covered
 ```
 
 This will create an HTML coverage report at `tarpaulin-report.html` that you can open in your web browser to view detailed line-by-line coverage information for all source files.
@@ -3781,11 +3785,11 @@ To use `rlnc` library crate in your Rust project, add it as a dependency in your
 
 ```toml
 [dependencies]
-rlnc = "=0.8.4"                                      # On x86_64 and aarch64 targets, it offers fast encoding, recoding and decoding, using SIMD intrinsics.
+rlnc = "=0.8.5"                                      # On x86_64 and aarch64 targets, it offers fast encoding, recoding and decoding, using SIMD intrinsics.
 # or
-rlnc = { version = "=0.8.4", features = "parallel" } # Uses `rayon`-based data-parallelism for fast encoding and recoding. Note, this feature, doesn't yet parallelize RLNC decoding.
+rlnc = { version = "=0.8.5", features = "parallel" } # Uses `rayon`-based data-parallelism for fast encoding and recoding. Note, this feature, doesn't yet parallelize RLNC decoding.
 
-rand = { version = "=0.9.1" } # Required for random number generation
+rand = { version = "=0.9.2" } # Required for random number generation
 ```
 
 ### Full RLNC Workflow Example
@@ -3806,6 +3810,7 @@ See [full_rlnc.rs](./examples/full_rlnc.rs) example program. Run the program wit
 
 ```bash
 Initialized Encoder with 10240 bytes of data, split into 32 pieces, each of 321 bytes. Each coded piece will be of 353 bytes.
+Overhead of encoding: 10.31%
 Initializing Decoder, expecting 32 original pieces of 321 bytes each.
 
 Sender generating 16 initial coded pieces...

@@ -124,7 +124,7 @@ impl Recoder {
             return Err(RLNCError::InvalidOutputBuffer);
         }
 
-        let (computed_coding_vector, mut recoded_data) = full_recoded_piece.split_at_mut(self.num_pieces_coded_together);
+        let (computed_coding_vector, recoded_data) = full_recoded_piece.split_at_mut(self.num_pieces_coded_together);
 
         // Compute the resulting coding vector for the original source pieces by multiplying
         // the random sampled recoding vector by the matrix of received coding vectors.
@@ -145,7 +145,7 @@ impl Recoder {
 
         unsafe {
             self.encoder
-                .code_with_coding_vector(&self.random_recoding_vector, &mut recoded_data)
+                .code_with_coding_vector(&self.random_recoding_vector, recoded_data)
                 .unwrap_unchecked()
         };
 

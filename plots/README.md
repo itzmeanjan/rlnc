@@ -21,7 +21,7 @@
     ```bash
     # This patch was generated on git tag v0.8.4 of this crate
     # If the benchmark files are not touched after that, this patch should work.
-    git apply plots/scripts/visualize-plot-bench-result.patch
+    git apply plots/visualize-plot-bench-result.patch
     ```
 
 4. Run benchmark program and collect console output.
@@ -71,3 +71,11 @@ All scripts are inside [scripts](./scripts) directory.
 ![rlnc-recoder-on-x86_64-with-amd-avx512](./rlnc-recoder-on-x86_64_with-amd-avx512.png)
 
 ![rlnc-decoder-on-x86_64-with-amd-avx512](./rlnc-decoder-on-x86_64_with-amd-avx512.png)
+
+## Performance Benchmarking on AMD x86_64 with GFNI+AV512
+
+![rlnc-encoder-on-x86_64-with-amd-gfni](./rlnc-encoder-on-x86_64_with-amd-gfni.png)
+
+![rlnc-recoder-on-x86_64-with-amd-gfni](./rlnc-recoder-on-x86_64_with-amd-gfni.png)
+
+![rlnc-decoder-on-x86_64-with-amd-gfni](./rlnc-decoder-on-x86_64_with-amd-gfni.png)

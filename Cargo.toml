@@ -1,6 +1,6 @@
 [package]
 name = "rlnc"
-version = "0.8.4"
+version = "0.8.5"
 edition = "2024"
 resolver = "3"
 rust-version = "1.89.0"
@@ -20,7 +20,7 @@ categories = ["network-programming", "encoding", "algorithms"]
 
 
 [dependencies]
-rand = "=0.9.1"
+rand = "=0.9.2"
 rayon = { version = "=1.10.0", optional = true }
 
 [dev-dependencies]
