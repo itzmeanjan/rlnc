@@ -133,7 +133,7 @@ fn recode(c: &mut Criterion) {
         group.throughput(Throughput::Bytes(
             (recoder.get_full_coded_piece_byte_len() * recoder.get_num_pieces_recoded_together() + recoder.get_full_coded_piece_byte_len()) as u64,
         ));
-        group.bench_function(format!("{:?}", rlnc_config), |b| {
+        group.bench_function(format!("{:?}", rlnc_config), move |b| {
             b.iter(|| black_box(&mut recoder).recode(black_box(&mut rng)));
         });
     }
@@ -165,7 +165,7 @@ fn recode_zero_alloc(c: &mut Criterion) {
         group.throughput(Throughput::Bytes(
             (recoder.get_full_coded_piece_byte_len() * recoder.get_num_pieces_recoded_together() + recoder.get_full_coded_piece_byte_len()) as u64,
         ));
-        group.bench_function(format!("{:?}", rlnc_config), |b| {
+        group.bench_function(format!("{:?}", rlnc_config), move |b| {
             b.iter(|| black_box(&mut recoder).recode_with_buf(black_box(&mut rng), black_box(&mut full_recoded_piece)));
         });
     }

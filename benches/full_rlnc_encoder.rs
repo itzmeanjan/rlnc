@@ -109,7 +109,7 @@ fn encode(c: &mut Criterion) {
         group.throughput(Throughput::Bytes(
             (encoder.get_piece_byte_len() * encoder.get_piece_count() + encoder.get_full_coded_piece_byte_len()) as u64,
         ));
-        group.bench_function(format!("{:?}", rlnc_config), |b| {
+        group.bench_function(format!("{:?}", rlnc_config), move |b| {
             b.iter(|| black_box(&encoder).code(black_box(&mut rng)));
         });
     }
@@ -134,7 +134,7 @@ fn encode_zero_alloc(c: &mut Criterion) {
         group.throughput(Throughput::Bytes(
             (encoder.get_piece_byte_len() * encoder.get_piece_count() + encoder.get_full_coded_piece_byte_len()) as u64,
         ));
-        group.bench_function(format!("{:?}", rlnc_config), |b| {
+        group.bench_function(format!("{:?}", rlnc_config), move |b| {
             b.iter(|| black_box(&encoder).code_with_buf(black_box(&mut rng), black_box(&mut full_coded_piece)));
         });
     }
