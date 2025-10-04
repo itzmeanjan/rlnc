@@ -18,16 +18,12 @@ fn bytes_to_human_readable(bytes: usize) -> String {
         unit_index += 1;
     }
 
-    format!("{:.2} {}", bytes, units[unit_index])
+    format!("{:.1}{}", bytes, units[unit_index])
 }
 
 impl Debug for RLNCConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!(
-            "{} data split into {} pieces",
-            &bytes_to_human_readable(self.data_byte_len),
-            self.piece_count
-        ))
+        f.write_str(&format!("{}/{}-pieces", &bytes_to_human_readable(self.data_byte_len), self.piece_count))
     }
 }
 
