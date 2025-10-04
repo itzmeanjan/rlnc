@@ -106,7 +106,7 @@ fn decode(c: &mut Criterion) {
         let num_pieces_to_produce = rlnc_config.piece_count * 2;
         let coded_pieces = (0..num_pieces_to_produce).flat_map(|_| encoder.code(&mut rng)).collect::<Vec<u8>>();
 
-        let mut decoder = Decoder::new(encoder.get_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC decoder");
+        let decoder = Decoder::new(encoder.get_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC decoder");
 
         group.measurement_time(Duration::from_secs(20));
         group.sample_size(100);
@@ -114,15 +114,19 @@ fn decode(c: &mut Criterion) {
         group.throughput(Throughput::Bytes(
             (decoder.get_full_coded_piece_byte_len() * decoder.get_num_pieces_coded_together()) as u64,
         ));
-        group.bench_function(format!("{:?}", rlnc_config), |b| {
-            b.iter(|| {
-                let mut coded_pieces_iter = coded_pieces.chunks_exact(decoder.get_full_coded_piece_byte_len());
+        group.bench_function(format!("{:?}", rlnc_config), move |b| {
+            b.iter_batched(
+                || decoder.clone(),
+                |mut dec| {
+                    let mut coded_pieces_iter = coded_pieces.chunks_exact(dec.get_full_coded_piece_byte_len());
 
-                while !decoder.is_already_decoded() {
-                    let coded_piece = unsafe { coded_pieces_iter.next().unwrap_unchecked() };
-                    let _ = black_box(&mut decoder).decode(black_box(coded_piece));
-                }
-            });
+                    while !black_box(&dec).is_already_decoded() {
+                        let coded_piece = unsafe { coded_pieces_iter.next().unwrap_unchecked() };
+                        let _ = black_box(&mut dec).decode(black_box(coded_piece));
+                    }
+                },
+                BatchSize::LargeInput,
+            );
         });
     }
 
