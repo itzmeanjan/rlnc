@@ -1,13 +1,7 @@
+use criterion::*;
 use rand::Rng;
 use rlnc::full::Encoder;
-use std::{fmt::Debug, time::Duration};
-
-#[global_allocator]
-static ALLOC: divan::AllocProfiler = divan::AllocProfiler::system();
-
-fn main() {
-    divan::Divan::default().bytes_format(divan::counter::BytesFormat::Binary).main();
-}
+use std::{fmt::Debug, hint::black_box, time::Duration};
 
 struct RLNCConfig {
     data_byte_len: usize,
@@ -100,34 +94,53 @@ const ARGS: &[RLNCConfig] = &[
     },
 ];
 
-#[divan::bench(args = ARGS, max_time = Duration::from_secs(100), skip_ext_time = true)]
-fn encode(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
-    let mut rng = rand::rng();
-    let data = (0..rlnc_config.data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
+fn encode(c: &mut Criterion) {
+    let mut group = c.benchmark_group("encode");
 
-    let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create RLNC encoder");
+    for rlnc_config in ARGS {
+        let mut rng = rand::rng();
+        let data = (0..rlnc_config.data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
+        let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create RLNC encoder");
 
-    bencher
-        .counter(divan::counter::BytesCount::new(
-            encoder.get_piece_byte_len() * encoder.get_piece_count() +  // Number of bytes used as input to encoder
-            encoder.get_full_coded_piece_byte_len(), // Number of bytes for each coded piece
-        ))
-        .with_inputs(rand::rng)
-        .bench_refs(|rng| divan::black_box(divan::black_box(&encoder).code(divan::black_box(rng))));
+        group.measurement_time(Duration::from_secs(20));
+        group.sample_size(100);
+
+        // Number of bytes used as input to encoder + Number of bytes for each coded piece
+        group.throughput(Throughput::Bytes(
+            (encoder.get_piece_byte_len() * encoder.get_piece_count() + encoder.get_full_coded_piece_byte_len()) as u64,
+        ));
+        group.bench_function(format!("{:?}", rlnc_config), |b| {
+            b.iter(|| black_box(&encoder).code(black_box(&mut rng)));
+        });
+    }
+
+    group.finish();
 }
 
-#[divan::bench(args = ARGS, max_time = Duration::from_secs(100), skip_ext_time = true)]
-fn encode_zero_alloc(bencher: divan::Bencher, rlnc_config: &RLNCConfig) {
-    let mut rng = rand::rng();
-    let data = (0..rlnc_config.data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
+fn encode_zero_alloc(c: &mut Criterion) {
+    let mut group = c.benchmark_group("encode_zero_alloc");
 
-    let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create RLNC encoder");
+    for rlnc_config in ARGS {
+        let mut rng = rand::rng();
+        let data = (0..rlnc_config.data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
 
-    bencher
-        .counter(divan::counter::BytesCount::new(
-            encoder.get_piece_byte_len() * encoder.get_piece_count() +  // Number of bytes used as input to encoder
-            encoder.get_full_coded_piece_byte_len(), // Number of bytes for each coded piece
-        ))
-        .with_inputs(|| (rand::rng(), vec![0u8; encoder.get_full_coded_piece_byte_len()]))
-        .bench_refs(|(rng, coded_piece)| divan::black_box(&encoder).code_with_buf(divan::black_box(rng), divan::black_box(coded_piece)));
+        let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create RLNC encoder");
+        let mut full_coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+
+        group.measurement_time(Duration::from_secs(20));
+        group.sample_size(100);
+
+        // Number of bytes used as input to encoder + Number of bytes for each coded piece
+        group.throughput(Throughput::Bytes(
+            (encoder.get_piece_byte_len() * encoder.get_piece_count() + encoder.get_full_coded_piece_byte_len()) as u64,
+        ));
+        group.bench_function(format!("{:?}", rlnc_config), |b| {
+            b.iter(|| black_box(&encoder).code_with_buf(black_box(&mut rng), black_box(&mut full_coded_piece)));
+        });
+    }
+
+    group.finish();
 }
+
+criterion_group!(rlnc_encoder, encode, encode_zero_alloc);
+criterion_main!(rlnc_encoder);
