@@ -31,10 +31,13 @@ coverage: ## Generates HTML code coverage report, using `cargo-tarpaulin`
 	cargo tarpaulin -t 600 --profile test-release --out Html
 
 .PHONY: bench
-bench: ## Run all benchmarks
+bench: ## Run all benchmarks in single-threaded mode
 	RUSTFLAGS="-C target-cpu=native" cargo bench --profile optimized --bench full_rlnc_encoder
 	RUSTFLAGS="-C target-cpu=native" cargo bench --profile optimized --bench full_rlnc_recoder
 	RUSTFLAGS="-C target-cpu=native" cargo bench --profile optimized --bench full_rlnc_decoder
+
+.PHONY: bench_parallel
+bench_parallel: ## Run all benchmarks in multi-threaded mode
 	RUSTFLAGS="-C target-cpu=native" cargo bench --profile optimized --features parallel --bench full_rlnc_encoder
 	RUSTFLAGS="-C target-cpu=native" cargo bench --profile optimized --features parallel --bench full_rlnc_recoder
 	RUSTFLAGS="-C target-cpu=native" cargo bench --profile optimized --features parallel --bench full_rlnc_decoder
