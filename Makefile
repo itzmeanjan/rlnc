@@ -32,8 +32,12 @@ coverage: ## Generates HTML code coverage report, using `cargo-tarpaulin`
 
 .PHONY: bench
 bench: ## Run all benchmarks
-	RUSTFLAGS="-C target-cpu=native" cargo bench --profile optimized
-	RUSTFLAGS="-C target-cpu=native" cargo bench --profile optimized --features parallel
+	RUSTFLAGS="-C target-cpu=native" cargo bench --profile optimized --bench full_rlnc_encoder
+	RUSTFLAGS="-C target-cpu=native" cargo bench --profile optimized --bench full_rlnc_recoder
+	RUSTFLAGS="-C target-cpu=native" cargo bench --profile optimized --bench full_rlnc_decoder
+	RUSTFLAGS="-C target-cpu=native" cargo bench --profile optimized --features parallel --bench full_rlnc_encoder
+	RUSTFLAGS="-C target-cpu=native" cargo bench --profile optimized --features parallel --bench full_rlnc_recoder
+	RUSTFLAGS="-C target-cpu=native" cargo bench --profile optimized --features parallel --bench full_rlnc_decoder
 
 .PHONY: clean
 clean: ## Removes cargo target directory
