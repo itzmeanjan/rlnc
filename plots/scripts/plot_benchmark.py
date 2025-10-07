@@ -167,7 +167,7 @@ def main():
 
     if not grouped_data:
         print("No data was parsed. Exiting.")
-        return
+        exit(1)
 
     for group_name in grouped_data:
         generate_plot(
