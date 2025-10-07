@@ -67,7 +67,7 @@ VENV_PYTHON := $(VENV)/bin/python
 VENV_PIP := $(VENV)/bin/pip
 
 OS := $(shell uname -s)
-CPU_NAME := $(shell if [ "$(OS)" = "Darwin" ]; then sysctl -n machdep.cpu.brand_string | tr ' ' '_' | tr -d '()'; elif [ "$(OS)" = "Linux" ]; then grep "model name" /proc/cpuinfo | uniq | cut -d: -f2 | sed 's/^[ \t]*//' | tr ' ' '_' | tr -d '()'; else echo "Unsupported OS: $(OS)" >&2; exit 1; fi)
+CPU_NAME := $(shell if [ "$(OS)" = "Darwin" ]; then sysctl -n machdep.cpu.brand_string | tr ' ' '_' | tr -d '()'; elif [ "$(OS)" = "Linux" ]; then grep "model name" /proc/cpuinfo | uniq | cut -d: -f2 | sed 's/^[ \t]*//' | tr ' ' '_' | tr -d '()'; else echo "$(OS)" | tr ' ' '_' | tr -d '()'; fi)
 
 .PHONY: setup
 setup: install ## Sets up virtual environment and installs dependencies
