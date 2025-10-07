@@ -28,8 +28,6 @@ def parse_and_group_data(
                 try:
                     data = json.loads(line)
                     id_parts = data.get("id", "").split("/")
-                    if len(id_parts) != 3:
-                        continue
 
                     group_name = id_parts[0]
                     size_str = id_parts[1]
