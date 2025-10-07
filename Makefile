@@ -62,7 +62,7 @@ example-wasm: ## Runs the Full RLNC example program in WASM environment
 
 # Define Virtual environment state directory along with path to executables inside venv
 VENV := .venv
-VENV_PYTEST := $(VENV)/bin/pytest
+VENV_PYTHON := $(VENV)/bin/python
 VENV_PIP := $(VENV)/bin/pip
 
 OS := $(shell uname -s)
@@ -88,18 +88,18 @@ $(VENV)/bin/activate: plots/scripts/requirements.txt
 .PHONY: bench_then_plot
 bench_then_plot: ## Run benchmark, collect JSONL output and produce plot of benchmark throughput
 	RUSTFLAGS="-C target-cpu=native" cargo criterion --bench full_rlnc_encoder --message-format json | tee full_rlnc_encoder.jsonl &&\
-	python plots/scripts/plot_benchmark.py -u GB/s --title-format "{group_name} on $(CPU_NAME)" full_rlnc_encoder.jsonl &&\
+	$(VENV_PYTHON) plots/scripts/plot_benchmark.py -u GB/s --title-format "{group_name} on $(CPU_NAME)" full_rlnc_encoder.jsonl &&\
 	rm full_rlnc_encoder.jsonl &&\
 	mv benchmark_encode.png plots/benchmark_encode_on_$(CPU_NAME)_with_$(shell rustc --version | tr ' ' '_' | tr -d '()').png &&\
 	mv benchmark_encode_zero_alloc.png plots/benchmark_encode_zero_alloc_on_$(CPU_NAME)_with_$(shell rustc --version | tr ' ' '_' | tr -d '()').png
 
 	RUSTFLAGS="-C target-cpu=native" cargo criterion --bench full_rlnc_recoder --message-format json | tee full_rlnc_recoder.jsonl &&\
-	python plots/scripts/plot_benchmark.py -u GB/s --title-format "{group_name} on $(CPU_NAME)" full_rlnc_recoder.jsonl &&\
+	$(VENV_PYTHON) plots/scripts/plot_benchmark.py -u GB/s --title-format "{group_name} on $(CPU_NAME)" full_rlnc_recoder.jsonl &&\
 	rm full_rlnc_recoder.jsonl &&\
 	mv benchmark_recode.png plots/benchmark_recode_on_$(CPU_NAME)_with_$(shell rustc --version | tr ' ' '_' | tr -d '()').png &&\
 	mv benchmark_recode_zero_alloc.png plots/benchmark_recode_zero_alloc_on_$(CPU_NAME)_with_$(shell rustc --version | tr ' ' '_' | tr -d '()').png
 
 	RUSTFLAGS="-C target-cpu=native" cargo criterion --bench full_rlnc_decoder --message-format json | tee full_rlnc_decoder.jsonl &&\
-	python plots/scripts/plot_benchmark.py --title-format "{group_name} on $(CPU_NAME)" full_rlnc_decoder.jsonl &&\
+	$(VENV_PYTHON) plots/scripts/plot_benchmark.py --title-format "{group_name} on $(CPU_NAME)" full_rlnc_decoder.jsonl &&\
 	rm full_rlnc_decoder.jsonl &&\
 	mv benchmark_decode.png plots/benchmark_decode_on_$(CPU_NAME)_with_$(shell rustc --version | tr ' ' '_' | tr -d '()').png
