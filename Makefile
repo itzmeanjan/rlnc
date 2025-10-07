@@ -43,8 +43,9 @@ bench_parallel: ## Run all benchmarks in multi-threaded mode
 	RUSTFLAGS="-C target-cpu=native" cargo bench --profile optimized --features parallel --bench full_rlnc_decoder
 
 .PHONY: clean
-clean: ## Removes cargo target directory
+clean: ## Removes cargo target and Python virtual environment directory
 	cargo clean
+	rm -rf $(VENV)
 
 .PHONY: example
 example: ## Runs the Full RLNC example program
@@ -86,7 +87,7 @@ $(VENV)/bin/activate: plots/scripts/requirements.txt
 	python -m venv $(VENV)
 
 .PHONY: bench_then_plot
-bench_then_plot: ## Run benchmark, collect JSONL output and produce plot of benchmark throughput
+bench_then_plot: setup ## Run benchmark, collect JSONL output and produce plot of benchmark throughput
 	RUSTFLAGS="-C target-cpu=native" cargo criterion --bench full_rlnc_encoder --message-format json | tee full_rlnc_encoder.jsonl &&\
 	$(VENV_PYTHON) plots/scripts/plot_benchmark.py -u GB/s --title-format "{group_name} on $(CPU_NAME)" full_rlnc_encoder.jsonl &&\
 	rm full_rlnc_encoder.jsonl &&\
