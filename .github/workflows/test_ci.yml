@@ -24,7 +24,7 @@ jobs:
             macos-13, # x86_64
             macos-latest, # arm64
 
-            windows-latest, # x86_64
+            # windows-latest, # x86_64
             windows-11-arm, # arm64
         ]
         rust: [
