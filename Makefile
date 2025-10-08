@@ -84,7 +84,7 @@ install: $(VENV)/bin/activate ## Install dependencies using `pip`
 # This target creates the virtual environment
 $(VENV)/bin/activate: plots/scripts/requirements.txt
 	@echo "Setting up environment with venv..."
-	python -m venv $(VENV)
+	python3 -m venv $(VENV)
 
 .PHONY: bench_then_plot
 bench_then_plot: setup ## Run benchmark, collect JSONL output and produce plot of benchmark throughput
