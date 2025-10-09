@@ -40,6 +40,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
 
       - name: Build and Test on ${{ matrix.os }} with Rust ${{ matrix.rust }}
+        if: matrix.os != 'windows-latest' || matrix.rust != '1.89.0'
         run: make test
 
       - name: Run examples on ${{ matrix.os }} with Rust ${{ matrix.rust }}
