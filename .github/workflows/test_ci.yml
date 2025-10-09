@@ -24,7 +24,7 @@ jobs:
             macos-13, # x86_64
             macos-latest, # arm64
 
-            # windows-latest, # x86_64
+            windows-latest, # x86_64
             windows-11-arm, # arm64
         ]
         rust: [
@@ -40,6 +40,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
 
       - name: Build and Test on ${{ matrix.os }} with Rust ${{ matrix.rust }}
+        if: matrix.os != 'windows-latest' || matrix.rust != '1.89.0'
         run: make test
 
       - name: Run examples on ${{ matrix.os }} with Rust ${{ matrix.rust }}
