@@ -71,23 +71,50 @@ pub unsafe fn mul_vec_by_scalar(vec: &mut [u8], scalar: u8) {
 
 #[target_feature(enable = "avx2")]
 pub unsafe fn add_vec_into(vec_dst: &mut [u8], vec_src: &[u8]) {
-    let mut iter_dst = vec_dst.chunks_exact_mut(2 * GF256_HALF_ORDER);
-    let mut iter_src = vec_src.chunks_exact(2 * GF256_HALF_ORDER);
+    let mut iter_dst = vec_dst.chunks_exact_mut(4 * 2 * GF256_HALF_ORDER);
+    let mut iter_src = vec_src.chunks_exact(4 * 2 * GF256_HALF_ORDER);
 
     unsafe {
         for (chunk_dst, chunk_src) in iter_dst.by_ref().zip(iter_src.by_ref()) {
-            let chunk_dst_simd = _mm256_lddqu_si256(chunk_dst.as_ptr().cast());
-            let chunk_src_simd = _mm256_lddqu_si256(chunk_src.as_ptr().cast());
-            let chunk_result = _mm256_xor_si256(chunk_dst_simd, chunk_src_simd);
+            let (chunk0_dst, chunk1_dst, chunk2_dst, chunk3_dst) = {
+                let (chunk0, rest) = chunk_dst.split_at_mut_unchecked(2 * GF256_HALF_ORDER);
+                let (chunk1, rest) = rest.split_at_mut_unchecked(2 * GF256_HALF_ORDER);
+                let (chunk2, chunk3) = rest.split_at_mut_unchecked(2 * GF256_HALF_ORDER);
 
-            _mm256_storeu_si256(chunk_dst.as_mut_ptr().cast(), chunk_result);
+                (chunk0, chunk1, chunk2, chunk3)
+            };
+
+            let (chunk0_src, chunk1_src, chunk2_src, chunk3_src) = {
+                let (chunk0, rest) = chunk_src.split_at_unchecked(2 * GF256_HALF_ORDER);
+                let (chunk1, rest) = rest.split_at_unchecked(2 * GF256_HALF_ORDER);
+                let (chunk2, chunk3) = rest.split_at_unchecked(2 * GF256_HALF_ORDER);
+
+                (chunk0, chunk1, chunk2, chunk3)
+            };
+
+            let chunk0_dst_simd = _mm256_lddqu_si256(chunk0_dst.as_ptr().cast());
+            let chunk0_src_simd = _mm256_lddqu_si256(chunk0_src.as_ptr().cast());
+            let chunk0_result = _mm256_xor_si256(chunk0_dst_simd, chunk0_src_simd);
+            _mm256_storeu_si256(chunk0_dst.as_mut_ptr().cast(), chunk0_result);
+
+            let chunk1_dst_simd = _mm256_lddqu_si256(chunk1_dst.as_ptr().cast());
+            let chunk1_src_simd = _mm256_lddqu_si256(chunk1_src.as_ptr().cast());
+            let chunk1_result = _mm256_xor_si256(chunk1_dst_simd, chunk1_src_simd);
+            _mm256_storeu_si256(chunk1_dst.as_mut_ptr().cast(), chunk1_result);
+
+            let chunk2_dst_simd = _mm256_lddqu_si256(chunk2_dst.as_ptr().cast());
+            let chunk2_src_simd = _mm256_lddqu_si256(chunk2_src.as_ptr().cast());
+            let chunk2_result = _mm256_xor_si256(chunk2_dst_simd, chunk2_src_simd);
+            _mm256_storeu_si256(chunk2_dst.as_mut_ptr().cast(), chunk2_result);
+
+            let chunk3_dst_simd = _mm256_lddqu_si256(chunk3_dst.as_ptr().cast());
+            let chunk3_src_simd = _mm256_lddqu_si256(chunk3_src.as_ptr().cast());
+            let chunk3_result = _mm256_xor_si256(chunk3_dst_simd, chunk3_src_simd);
+            _mm256_storeu_si256(chunk3_dst.as_mut_ptr().cast(), chunk3_result);
         }
     }
 
-    let remainder_dst = iter_dst.into_remainder();
-    let remainder_src = iter_src.remainder();
-
-    remainder_dst.iter_mut().zip(remainder_src).for_each(|(a, b)| {
+    iter_dst.into_remainder().iter_mut().zip(iter_src.remainder()).for_each(|(a, b)| {
         *a ^= b;
     });
 }
