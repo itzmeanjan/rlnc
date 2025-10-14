@@ -11,7 +11,7 @@ use std::arch::x86_64::*;
 
 #[target_feature(enable = "avx2")]
 pub unsafe fn mul_vec_by_scalar(vec: &mut [u8], scalar: u8) {
-    let mut iter = vec.chunks_exact_mut(2 * GF256_HALF_ORDER);
+    let mut iter = vec.chunks_exact_mut(4 * 2 * GF256_HALF_ORDER);
 
     unsafe {
         let l_tbl = _mm256_broadcastsi128_si256(_mm_lddqu_si128(GF256_SIMD_MUL_TABLE_LOW[scalar as usize].as_ptr().cast()));
@@ -19,17 +19,48 @@ pub unsafe fn mul_vec_by_scalar(vec: &mut [u8], scalar: u8) {
         let l_mask = _mm256_set1_epi8(0x0f);
 
         for chunk in iter.by_ref() {
-            let chunk_simd = _mm256_lddqu_si256(chunk.as_ptr().cast());
+            let (chunk0, chunk1, chunk2, chunk3) = {
+                let (chunk0, rest) = chunk.split_at_mut_unchecked(2 * GF256_HALF_ORDER);
+                let (chunk1, rest) = rest.split_at_mut_unchecked(2 * GF256_HALF_ORDER);
+                let (chunk2, chunk3) = rest.split_at_mut_unchecked(2 * GF256_HALF_ORDER);
 
-            let chunk_simd_lo = _mm256_and_si256(chunk_simd, l_mask);
-            let chunk_simd_lo = _mm256_shuffle_epi8(l_tbl, chunk_simd_lo);
+                (chunk0, chunk1, chunk2, chunk3)
+            };
 
-            let chunk_simd_hi = _mm256_srli_epi64(chunk_simd, 4);
-            let chunk_simd_hi = _mm256_and_si256(chunk_simd_hi, l_mask);
-            let chunk_simd_hi = _mm256_shuffle_epi8(h_tbl, chunk_simd_hi);
+            let chunk0_simd = _mm256_lddqu_si256(chunk0.as_ptr().cast());
+            let chunk1_simd = _mm256_lddqu_si256(chunk1.as_ptr().cast());
+            let chunk2_simd = _mm256_lddqu_si256(chunk2.as_ptr().cast());
+            let chunk3_simd = _mm256_lddqu_si256(chunk3.as_ptr().cast());
 
-            let res = _mm256_xor_si256(chunk_simd_lo, chunk_simd_hi);
-            _mm256_storeu_si256(chunk.as_mut_ptr().cast(), res);
+            let chunk0_simd_lo = _mm256_and_si256(chunk0_simd, l_mask);
+            let chunk1_simd_lo = _mm256_and_si256(chunk1_simd, l_mask);
+            let chunk2_simd_lo = _mm256_and_si256(chunk2_simd, l_mask);
+            let chunk3_simd_lo = _mm256_and_si256(chunk3_simd, l_mask);
+
+            let chunk0_simd_lo = _mm256_shuffle_epi8(l_tbl, chunk0_simd_lo);
+            let chunk1_simd_lo = _mm256_shuffle_epi8(l_tbl, chunk1_simd_lo);
+            let chunk2_simd_lo = _mm256_shuffle_epi8(l_tbl, chunk2_simd_lo);
+            let chunk3_simd_lo = _mm256_shuffle_epi8(l_tbl, chunk3_simd_lo);
+
+            let chunk0_simd_hi = _mm256_and_si256(_mm256_srli_epi64(chunk0_simd, 4), l_mask);
+            let chunk1_simd_hi = _mm256_and_si256(_mm256_srli_epi64(chunk1_simd, 4), l_mask);
+            let chunk2_simd_hi = _mm256_and_si256(_mm256_srli_epi64(chunk2_simd, 4), l_mask);
+            let chunk3_simd_hi = _mm256_and_si256(_mm256_srli_epi64(chunk3_simd, 4), l_mask);
+
+            let chunk0_simd_hi = _mm256_shuffle_epi8(h_tbl, chunk0_simd_hi);
+            let chunk1_simd_hi = _mm256_shuffle_epi8(h_tbl, chunk1_simd_hi);
+            let chunk2_simd_hi = _mm256_shuffle_epi8(h_tbl, chunk2_simd_hi);
+            let chunk3_simd_hi = _mm256_shuffle_epi8(h_tbl, chunk3_simd_hi);
+
+            let res0 = _mm256_xor_si256(chunk0_simd_lo, chunk0_simd_hi);
+            let res1 = _mm256_xor_si256(chunk1_simd_lo, chunk1_simd_hi);
+            let res2 = _mm256_xor_si256(chunk2_simd_lo, chunk2_simd_hi);
+            let res3 = _mm256_xor_si256(chunk3_simd_lo, chunk3_simd_hi);
+
+            _mm256_storeu_si256(chunk0.as_mut_ptr().cast(), res0);
+            _mm256_storeu_si256(chunk1.as_mut_ptr().cast(), res1);
+            _mm256_storeu_si256(chunk2.as_mut_ptr().cast(), res2);
+            _mm256_storeu_si256(chunk3.as_mut_ptr().cast(), res3);
         }
     }
 
