@@ -57,3 +57,42 @@ fpu, vme, de, pse, tsc, msr, pae, mce, cx8, apic, sep, mtrr, pge, mca, cmov, pat
 ### Decoder
 
 ![benchmark_decode_on_12th_Gen_IntelR_CoreTM_i7-1260P_with_rustc_1.90.0_1159e78c4_2025-09-14](./benchmark_decode_on_12th_Gen_IntelR_CoreTM_i7-1260P_with_rustc_1.90.0_1159e78c4_2025-09-14.png)
+
+## On AMD EPYC 9R14 (AWS EC2 `m7a.large`)
+
+Running Linux kernel
+
+```bash
+$ uname -srm
+Linux 6.14.0-1011-aws x86_64
+```
+
+with Rust compiler
+
+```bash
+$ rustc --version
+rustc 1.90.0 (1159e78c4 2025-09-14)
+```
+
+and following CPU feature flags
+
+```bash
+$ lscpu | awk -F': *' '/Flags/{gsub(" ", ", ", $2);print $2}'
+fpu, vme, de, pse, tsc, msr, pae, mce, cx8, apic, sep, mtrr, pge, mca, cmov, pat, pse36, clflush, dts, acpi, mmx, fxsr, sse, sse2, ss, ht, tm, pbe, syscall, nx, pdpe1gb, rdtscp, lm, constant_tsc, art, arch_perfmon, pebs, bts, rep_good, nopl, xtopology, nonstop_tsc, cpuid, aperfmperf, tsc_known_freq, pni, pclmulqdq, dtes64, monitor, ds_cpl, vmx, smx, est, tm2, ssse3, sdbg, fma, cx16, xtpr, pdcm, pcid, sse4_1, sse4_2, x2apic, movbe, popcnt, tsc_deadline_timer, aes, xsave, avx, f16c, rdrand, lahf_lm, abm, 3dnowprefetch, cpuid_fault, epb, ssbd, ibrs, ibpb, stibp, ibrs_enhanced, tpr_shadow, flexpriority, ept, vpid, ept_ad, fsgsbase, tsc_adjust, bmi1, avx2, smep, bmi2, erms, invpcid, rdseed, adx, smap, clflushopt, clwb, intel_pt, sha_ni, xsaveopt, xsavec, xgetbv1, xsaves, split_lock_detect, user_shstk, avx_vnni, dtherm, ida, arat, pln, pts, hwp, hwp_notify, hwp_act_window, hwp_epp, hwp_pkg_req, hfi, vnmi, umip, pku, ospke, waitpkg, gfni, vaes, vpclmulqdq, rdpid, movdiri, movdir64b, fsrm, md_clear, serialize, arch_lbr, ibt, flush_l1d, arch_capabilities
+```
+
+### Encoder
+
+![benchmark_encode_on_AMD_EPYC_9R14_with_rustc_1.90.0_1159e78c4_2025-09-14](./benchmark_encode_on_AMD_EPYC_9R14_with_rustc_1.90.0_1159e78c4_2025-09-14.png)
+
+![benchmark_encode_zero_alloc_on_AMD_EPYC_9R14_with_rustc_1.90.0_1159e78c4_2025-09-14](./benchmark_encode_zero_alloc_on_AMD_EPYC_9R14_with_rustc_1.90.0_1159e78c4_2025-09-14.png)
+
+### Recoder
+
+![benchmark_recode_on_AMD_EPYC_9R14_with_rustc_1.90.0_1159e78c4_2025-09-14](./benchmark_recode_on_AMD_EPYC_9R14_with_rustc_1.90.0_1159e78c4_2025-09-14.png)
+
+![benchmark_recode_zero_alloc_on_AMD_EPYC_9R14_with_rustc_1.90.0_1159e78c4_2025-09-14](./benchmark_recode_zero_alloc_on_AMD_EPYC_9R14_with_rustc_1.90.0_1159e78c4_2025-09-14.png)
+
+### Decoder
+
+![benchmark_decode_on_AMD_EPYC_9R14_with_rustc_1.90.0_1159e78c4_2025-09-14](./benchmark_decode_on_AMD_EPYC_9R14_with_rustc_1.90.0_1159e78c4_2025-09-14.png)
