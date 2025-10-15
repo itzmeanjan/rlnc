@@ -8,7 +8,7 @@ use std::arch::x86_64::*;
 
 #[target_feature(enable = "gfni", enable = "avx512vl")]
 pub unsafe fn mul_vec_by_scalar(vec: &mut [u8], scalar: u8) {
-    let mut iter = vec.chunks_exact_mut(2 * GF256_HALF_ORDER);
+    let mut iter = vec.chunks_exact_mut(GF256_HALF_ORDER);
 
     unsafe {
         let scalar_simd = _mm_set1_epi8(scalar as i8);
@@ -27,8 +27,8 @@ pub unsafe fn mul_vec_by_scalar(vec: &mut [u8], scalar: u8) {
 
 #[target_feature(enable = "gfni", enable = "avx512vl")]
 pub unsafe fn mul_vec_by_scalar_then_add_into(add_into_vec: &mut [u8], mul_vec: &[u8], scalar: u8) {
-    let mut add_vec_iter = add_into_vec.chunks_exact_mut(2 * GF256_HALF_ORDER);
-    let mut mul_vec_iter = mul_vec.chunks_exact(2 * GF256_HALF_ORDER);
+    let mut add_vec_iter = add_into_vec.chunks_exact_mut(GF256_HALF_ORDER);
+    let mut mul_vec_iter = mul_vec.chunks_exact(GF256_HALF_ORDER);
 
     unsafe {
         let scalar_simd = _mm_set1_epi8(scalar as i8);
