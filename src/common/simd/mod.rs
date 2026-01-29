@@ -1,4 +1,7 @@
-use crate::common::gf256::Gf256;
+use crate::common::{
+    gf256::Gf256,
+    mul_table::GF256_TABLES,
+};
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 mod x86;
@@ -86,6 +89,7 @@ pub fn gf256_inplace_add_vectors(vec_dst: &mut [u8], vec_src: &[u8]) {
 ///
 /// This function can be thought of an optimization over, first applying `gf256_inplace_mul_vec_by_scalar`
 /// and then applying `gf256_inplace_add_vectors`.
+
 pub fn gf256_mul_vec_by_scalar_then_add_into_vec(add_into_vec: &mut [u8], mul_vec: &[u8], scalar: u8) {
     if add_into_vec.is_empty() {
         return;
@@ -112,8 +116,15 @@ pub fn gf256_mul_vec_by_scalar_then_add_into_vec(add_into_vec: &mut [u8], mul_ve
         }
     }
 
-    add_into_vec
-        .iter_mut()
-        .zip(mul_vec.iter().map(|&src_symbol| Gf256::mul_const(src_symbol, scalar)))
-        .for_each(|(res, scaled)| *res ^= scaled);
+    let table = &GF256_TABLES[scalar as usize];
+    let len = add_into_vec.len().min(mul_vec.len());
+
+    // Re-slicing to the same length helps the compiler remove bounds checks
+    let d = &mut add_into_vec[..len];
+    let s = &mul_vec[..len];
+
+    for i in 0..len {
+        d[i] ^= table[s[i] as usize];
+    }
+
 }
