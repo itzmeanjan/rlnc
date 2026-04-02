@@ -2,12 +2,9 @@ use super::consts::BOUNDARY_MARKER;
 use crate::RLNCError;
 use rand::Rng;
 
-#[cfg(all(feature = "parallel", not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))))]
-use crate::common::gf256::Gf256;
-#[cfg(not(feature = "parallel"))]
 use crate::common::simd::gf256_mul_vec_by_scalar_then_add_into_vec;
-#[cfg(all(feature = "parallel", any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
-use crate::common::simd::{gf256_inplace_add_vectors, gf256_inplace_mul_vec_by_scalar};
+#[cfg(feature = "parallel")]
+use crate::common::simd::gf256_inplace_add_vectors;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
@@ -163,6 +160,11 @@ impl Encoder {
     /// * Returns `Ok(())` on success.
     /// * Returns `Err(RLNCError::CodingVectorLengthMismatch)` if the length of `coding_vector` is not `self.get_piece_count()`.
     /// * Returns `Err(RLNCError::InvalidOutputBuffer)` if the length of `coded_data` is not `self.get_piece_byte_len()`.
+    /// Parallel implementation that distributes pieces across rayon threads in
+    /// coarse-grained chunks. Each thread accumulates its range of pieces using
+    /// the fused SIMD multiply-and-add operation (one memory pass per piece,
+    /// zero per-piece allocation). The per-thread partial results are then
+    /// reduced into the output buffer.
     #[cfg(feature = "parallel")]
     pub(crate) fn code_with_coding_vector(&self, coding_vector: &[u8], coded_data: &mut [u8]) -> Result<(), RLNCError> {
         if coding_vector.len() != self.piece_count {
@@ -172,54 +174,28 @@ impl Encoder {
             return Err(RLNCError::InvalidOutputBuffer);
         }
 
-        coded_data.copy_from_slice(
-            &self
-                .data
-                .par_chunks_exact(self.piece_byte_len)
-                .zip(coding_vector)
-                .map(|(piece, &random_symbol)| {
-                    #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
-                    {
-                        let mut scalar_x_piece = piece.to_vec();
-                        gf256_inplace_mul_vec_by_scalar(&mut scalar_x_piece, random_symbol);
+        let num_threads = rayon::current_num_threads();
+        let pieces_per_thread = self.piece_count.div_ceil(num_threads).max(1);
 
-                        scalar_x_piece
-                    }
+        let partials: Vec<Vec<u8>> = coding_vector
+            .par_chunks(pieces_per_thread)
+            .enumerate()
+            .map(|(chunk_idx, coeff_chunk)| {
+                let mut partial = vec![0u8; self.piece_byte_len];
+                let base = chunk_idx * pieces_per_thread;
+                for (offset, &coeff) in coeff_chunk.iter().enumerate() {
+                    let start = (base + offset) * self.piece_byte_len;
+                    let piece = &self.data[start..start + self.piece_byte_len];
+                    gf256_mul_vec_by_scalar_then_add_into_vec(&mut partial, piece, coeff);
+                }
+                partial
+            })
+            .collect();
 
-                    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
-                    {
-                        piece.iter().map(move |&symbol| (Gf256::new(symbol) * Gf256::new(random_symbol)).get())
-                    }
-                })
-                .fold(
-                    || vec![0u8; self.piece_byte_len],
-                    |mut acc, cur| {
-                        #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
-                        gf256_inplace_add_vectors(&mut acc, &cur);
-
-                        #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
-                        acc.iter_mut().zip(cur).for_each(|(a, b)| {
-                            *a ^= b;
-                        });
-
-                        acc
-                    },
-                )
-                .reduce(
-                    || vec![0u8; self.piece_byte_len],
-                    |mut acc, cur| {
-                        #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
-                        gf256_inplace_add_vectors(&mut acc, &cur);
-
-                        #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
-                        acc.iter_mut().zip(cur).for_each(|(a, b)| {
-                            *a ^= b;
-                        });
-
-                        acc
-                    },
-                ),
-        );
+        coded_data.fill(0);
+        for partial in &partials {
+            gf256_inplace_add_vectors(coded_data, partial);
+        }
 
         Ok(())
     }
