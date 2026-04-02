@@ -82,16 +82,25 @@ impl Recoder {
         let piece_byte_len = full_coded_piece_byte_len - num_pieces_coded_together;
         let num_pieces_received = data.len() / full_coded_piece_byte_len;
 
-        let mut coding_vectors = Vec::with_capacity(num_pieces_received * num_pieces_coded_together);
+        // Store the coding coefficient matrix in column-major (transposed) order so that
+        // each column is contiguous in memory. The hot path in `recode_with_buf` computes a
+        // dot product per column; contiguous storage lets that inner loop scan sequentially,
+        // which is significantly more cache-friendly than the row-major stride access it
+        // would otherwise require.
+        let mut coding_vectors = vec![Gf256::default(); num_pieces_received * num_pieces_coded_together];
         let mut coded_pieces = Vec::with_capacity(num_pieces_received * piece_byte_len);
 
-        data.chunks_exact(full_coded_piece_byte_len).for_each(|full_coded_piece| {
-            let coding_vector = &full_coded_piece[..num_pieces_coded_together];
-            let coded_piece = &full_coded_piece[num_pieces_coded_together..];
+        data.chunks_exact(full_coded_piece_byte_len)
+            .enumerate()
+            .for_each(|(piece_idx, full_coded_piece)| {
+                let coding_vector = &full_coded_piece[..num_pieces_coded_together];
+                let coded_piece = &full_coded_piece[num_pieces_coded_together..];
 
-            coding_vectors.extend(coding_vector.iter().map(|&symbol| Gf256::new(symbol)));
-            coded_pieces.extend_from_slice(coded_piece);
-        });
+                for (coeff_idx, &symbol) in coding_vector.iter().enumerate() {
+                    coding_vectors[coeff_idx * num_pieces_received + piece_idx] = Gf256::new(symbol);
+                }
+                coded_pieces.extend_from_slice(coded_piece);
+            });
 
         // Pre-allocate internal workspace buffers to avoid repeated allocations during recoding.
         let encoder = unsafe { Encoder::without_padding(coded_pieces, num_pieces_received).unwrap_unchecked() };
@@ -131,13 +140,16 @@ impl Recoder {
         rng.fill_bytes(&mut self.random_recoding_vector);
 
         for (coeff_idx, coeff_val) in computed_coding_vector.iter_mut().enumerate().take(self.num_pieces_coded_together) {
+            // The coding coefficient matrix is stored column-major, so column
+            // `coeff_idx` occupies a contiguous slice. Zipping it with the
+            // recoding vector gives a sequential memory access pattern.
+            let column = &self.coding_vectors[coeff_idx * self.num_pieces_received..(coeff_idx + 1) * self.num_pieces_received];
             let computed_coeff = self
                 .random_recoding_vector
                 .iter()
-                .enumerate()
-                .fold(Gf256::default(), |acc, (recoding_vec_idx, &cur)| {
-                    let row_begins_at = recoding_vec_idx * self.num_pieces_coded_together;
-                    acc + Gf256::new(cur) * self.coding_vectors[row_begins_at + coeff_idx]
+                .zip(column)
+                .fold(Gf256::default(), |acc, (&cur, &coeff)| {
+                    acc + Gf256::new(cur) * coeff
                 });
 
             *coeff_val = computed_coeff.get();
