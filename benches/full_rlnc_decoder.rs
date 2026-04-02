@@ -102,19 +102,19 @@ fn decode(c: &mut Criterion) {
         let num_pieces_to_produce = rlnc_config.piece_count * 2;
         let coded_pieces = (0..num_pieces_to_produce).flat_map(|_| encoder.code(&mut rng)).collect::<Vec<u8>>();
 
-        let decoder = Decoder::new(encoder.get_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC decoder");
+        let decoder = Decoder::new(encoder.piece_byte_len(), encoder.piece_count());
 
         group.measurement_time(Duration::from_secs(20));
         group.sample_size(100);
 
         group.throughput(Throughput::Bytes(
-            (decoder.get_full_coded_piece_byte_len() * decoder.get_num_pieces_coded_together()) as u64,
+            (decoder.full_coded_piece_byte_len() * decoder.piece_count().value()) as u64,
         ));
         group.bench_function(format!("{:?}", rlnc_config), move |b| {
             b.iter_batched(
                 || decoder.clone(),
                 |mut dec| {
-                    let mut coded_pieces_iter = coded_pieces.chunks_exact(dec.get_full_coded_piece_byte_len());
+                    let mut coded_pieces_iter = coded_pieces.chunks_exact(dec.full_coded_piece_byte_len());
 
                     while !black_box(&dec).is_already_decoded() {
                         let coded_piece = unsafe { coded_pieces_iter.next().unwrap_unchecked() };

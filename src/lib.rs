@@ -48,6 +48,8 @@
 //! -   **Flexible data handling**: Supports arbitrary byte lengths for input
 //!     data, with internal padding and boundary markers for robust decoding.
 //! -   **Error Handling**: Comprehensive `RLNCError` enum for various failure scenarios.
+//! -   **Type-safe API**: `PieceCount` and `PieceByteLen` newtypes prevent accidentally
+//!     swapping parameters of the same underlying type.
 //!
 //! ## Example Usage
 //!
@@ -78,10 +80,10 @@
 //! let coded_pieces_for_recoding: Vec<u8> = (0..num_pieces_for_recoding).flat_map(|_| encoder.code(&mut rng)).collect();
 //!
 //! // 4. Initialize the Recoder with 16 coded pieces
-//! let mut recoder = Recoder::new(coded_pieces_for_recoding, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC recoder");
+//! let mut recoder = Recoder::new(coded_pieces_for_recoding, encoder.piece_byte_len(), encoder.piece_count()).expect("Failed to create RLNC recoder");
 //!
 //! // 5. Initialize the Decoder
-//! let mut decoder = Decoder::new(encoder.get_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC decoder");
+//! let mut decoder = Decoder::new(encoder.piece_byte_len(), encoder.piece_count());
 //!
 //! // 6. Generate a recoded piece, this is the piece to be sent to the decoder as first piece.
 //! let recoded_piece = recoder.recode(&mut rng);
@@ -101,10 +103,10 @@
 //!     }
 //! }
 //!
-//! // 5. Retrieve the decoded data
-//! let decoded_data = decoder.get_decoded_data().expect("Failed to retrieve decoded data even after all pieces are received");
+//! // 9. Retrieve the decoded data
+//! let decoded_data = decoder.into_decoded_data().expect("Failed to retrieve decoded data even after all pieces are received");
 //!
-//! // 6. Verify that the decoded data matches the original data
+//! // 10. Verify that the decoded data matches the original data
 //! assert_eq!(original_data_copy, decoded_data);
 //! println!("RLNC workflow completed successfully! Original data matches decoded data.");
 //! ```
@@ -115,11 +117,11 @@
 //!
 //! ```toml
 //! [dependencies]
-//! rlnc = "=0.8.7"                                      # On x86_64 and aarch64 targets, it offers fast encoding, recoding and decoding, using SIMD intrinsics.
+//! rlnc = "=0.9.0"                                      # On x86_64 and aarch64 targets, it offers fast encoding, recoding and decoding, using SIMD intrinsics.
 //! # or
-//! rlnc = { version = "=0.8.7", features = "parallel" } # Uses `rayon`-based data-parallelism for fast encoding/ recoding. Decoding is not yet parallelized.
+//! rlnc = { version = "=0.9.0", features = "parallel" } # Uses `rayon`-based data-parallelism for fast encoding/ recoding. Decoding is not yet parallelized.
 //!
-//! rand = { version = "=0.9.1" } # Required for random number generation
+//! rand = { version = "=0.9.2" } # Required for random number generation
 //! ```
 //!
 //! For more see README in `rlnc` repository @ <https://github.com/itzmeanjan/rlnc>.
