@@ -124,14 +124,14 @@ fn recode(c: &mut Criterion) {
             .flat_map(|_| encoder.code(&mut rng))
             .collect::<Vec<u8>>();
         let mut recoder =
-            Recoder::new(coded_pieces.clone(), encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC recoder");
+            Recoder::new(coded_pieces.clone(), encoder.piece_byte_len(), encoder.piece_count()).expect("Failed to create RLNC recoder");
 
         group.measurement_time(Duration::from_secs(20));
         group.sample_size(100);
 
         // Number of bytes used as input to recoder + Number of bytes for each recoded piece
         group.throughput(Throughput::Bytes(
-            (recoder.get_full_coded_piece_byte_len() * recoder.get_num_pieces_recoded_together() + recoder.get_full_coded_piece_byte_len()) as u64,
+            (recoder.full_coded_piece_byte_len() * recoder.recoded_piece_count() + recoder.full_coded_piece_byte_len()) as u64,
         ));
         group.bench_function(format!("{:?}", rlnc_config), move |b| {
             b.iter(|| black_box(&mut recoder).recode(black_box(&mut rng)));
@@ -154,16 +154,16 @@ fn recode_zero_alloc(c: &mut Criterion) {
             .flat_map(|_| encoder.code(&mut rng))
             .collect::<Vec<u8>>();
         let mut recoder =
-            Recoder::new(coded_pieces.clone(), encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create RLNC recoder");
+            Recoder::new(coded_pieces.clone(), encoder.piece_byte_len(), encoder.piece_count()).expect("Failed to create RLNC recoder");
 
-        let mut full_recoded_piece = vec![0u8; recoder.get_full_coded_piece_byte_len()];
+        let mut full_recoded_piece = vec![0u8; recoder.full_coded_piece_byte_len()];
 
         group.measurement_time(Duration::from_secs(20));
         group.sample_size(100);
 
         // Number of bytes used as input to recoder + Number of bytes for each recoded piece
         group.throughput(Throughput::Bytes(
-            (recoder.get_full_coded_piece_byte_len() * recoder.get_num_pieces_recoded_together() + recoder.get_full_coded_piece_byte_len()) as u64,
+            (recoder.full_coded_piece_byte_len() * recoder.recoded_piece_count() + recoder.full_coded_piece_byte_len()) as u64,
         ));
         group.bench_function(format!("{:?}", rlnc_config), move |b| {
             b.iter(|| black_box(&mut recoder).recode_with_buf(black_box(&mut rng), black_box(&mut full_recoded_piece)));

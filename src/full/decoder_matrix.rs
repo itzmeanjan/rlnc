@@ -145,7 +145,7 @@ impl DecoderMatrix {
                     continue;
                 }
 
-                let quotient = unsafe { (self[(j, i)] / self[(i, i)]).unwrap_unchecked().get() };
+                let quotient = unsafe { (self[(j, i)] / self[(i, i)]).unwrap_unchecked().value() };
 
                 let i_th_row_starts_at = i * self.cols;
                 let i_th_row_ends_at = i_th_row_starts_at + self.cols;
@@ -181,7 +181,7 @@ impl DecoderMatrix {
                     continue;
                 }
 
-                let quotient = unsafe { (self[(j, i)] / self[(i, i)]).unwrap_unchecked().get() };
+                let quotient = unsafe { (self[(j, i)] / self[(i, i)]).unwrap_unchecked().value() };
 
                 let j_th_row_starts_at = j * self.cols;
                 let j_th_row_ends_at = j_th_row_starts_at + self.cols;
@@ -201,7 +201,7 @@ impl DecoderMatrix {
                 continue;
             }
 
-            let inv = unsafe { self[(i, i)].inv().unwrap_unchecked().get() };
+            let inv = unsafe { self[(i, i)].inv().unwrap_unchecked().value() };
             self[(i, i)] = Gf256::one();
 
             let i_th_row_starts_at = i * self.cols;

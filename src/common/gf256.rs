@@ -65,7 +65,7 @@ impl Gf256 {
     }
 
     /// Returns the raw u8 value of the Gf256 element.
-    pub const fn get(&self) -> u8 {
+    pub const fn value(&self) -> u8 {
         self.val
     }
 

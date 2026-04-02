@@ -24,7 +24,7 @@ fn prop_test_rlnc_encoder_decoder() {
         let data_copy = data.clone();
 
         let encoder = Encoder::new(data, piece_count).expect("Failed to create Encoder");
-        let mut decoder = Decoder::new(encoder.get_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create Decoder");
+        let mut decoder = Decoder::new(encoder.piece_byte_len(), encoder.piece_count());
 
         loop {
             let coded_piece = encoder.code(&mut rng);
@@ -40,7 +40,7 @@ fn prop_test_rlnc_encoder_decoder() {
         }
 
         assert!(decoder.is_already_decoded());
-        let decoded_data = decoder.get_decoded_data().expect("Extracting decoded data must not fail!");
+        let decoded_data = decoder.into_decoded_data().expect("Extracting decoded data must not fail!");
 
         assert_eq!(data_copy, decoded_data);
     });
@@ -72,14 +72,14 @@ fn prop_test_rlnc_encoder_recoder_decoder() {
         let data_copy = data.clone();
 
         let encoder = Encoder::new(data, piece_count).expect("Failed to create Encoder");
-        let mut decoder = Decoder::new(encoder.get_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create Decoder");
+        let mut decoder = Decoder::new(encoder.piece_byte_len(), encoder.piece_count());
 
         'OUTER: loop {
             let num_pieces_to_recode = rng.random_range(MIN_NUM_PIECES_TO_RECODE..=MAX_NUM_PIECES_TO_RECODE);
 
             let coded_pieces = (0..num_pieces_to_recode).flat_map(|_| encoder.code(&mut rng)).collect::<Vec<u8>>();
 
-            let mut recoder = Recoder::new(coded_pieces, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count())
+            let mut recoder = Recoder::new(coded_pieces, encoder.piece_byte_len(), encoder.piece_count())
                 .expect("Construction of RLNC recoder must not fail!");
 
             let num_recoded_pieces_to_use = rng.random_range(MIN_NUM_RECODED_PIECES_TO_USE..=MAX_NUM_RECODED_PIECES_TO_USE);
@@ -112,7 +112,7 @@ fn prop_test_rlnc_encoder_recoder_decoder() {
         }
 
         assert!(decoder.is_already_decoded());
-        let decoded_data = decoder.get_decoded_data().expect("Extracting decoded data must not fail!");
+        let decoded_data = decoder.into_decoded_data().expect("Extracting decoded data must not fail!");
 
         assert_eq!(data_copy, decoded_data);
     });
@@ -140,11 +140,11 @@ fn prop_test_rlnc_decoding_with_useless_pieces() {
         // Create Full RLNC Encoder
         let encoder = Encoder::new(data, piece_count).expect("Failed to create Encoder");
         // Create Full RLNC Decoder
-        let mut decoder = Decoder::new(encoder.get_piece_byte_len(), encoder.get_piece_count()).expect("Failed to create Decoder");
+        let mut decoder = Decoder::new(encoder.piece_byte_len(), encoder.piece_count());
 
         // Reserve memory for holding coded pieces, which are to be used for recoding.
         let num_pieces_to_use_for_recoding = piece_count / 2;
-        let mut coded_pieces_for_recoding = Vec::with_capacity(encoder.get_full_coded_piece_byte_len() * num_pieces_to_use_for_recoding);
+        let mut coded_pieces_for_recoding = Vec::with_capacity(encoder.full_coded_piece_byte_len() * num_pieces_to_use_for_recoding);
 
         // Generate some coded pieces, push them into Decoder and keep their copy so that they can be used for recoding.
         (0..num_pieces_to_use_for_recoding).for_each(|_| {
@@ -165,7 +165,7 @@ fn prop_test_rlnc_decoding_with_useless_pieces() {
         // new pieces from previously consumed coded pieces. And those recoded pieces will all be useless, because the recoder will
         // just produce new linear combination of existing coded pieces, and they can't be linearly independent from all coded pieces
         // which were already seen by the Decoder.
-        let mut recoder = Recoder::new(coded_pieces_for_recoding, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count())
+        let mut recoder = Recoder::new(coded_pieces_for_recoding, encoder.piece_byte_len(), encoder.piece_count())
             .expect("Must be able to build a Recoder");
 
         // Hence in following loop, decoding process won't progress, because all the recoded pieces will be useless.
@@ -184,7 +184,7 @@ fn prop_test_rlnc_decoding_with_useless_pieces() {
         });
 
         // Finally, we can grab new coded pieces from directly the Encoder to finalize the decoding process.
-        while decoder.get_remaining_piece_count() > 0 {
+        while decoder.remaining_piece_count() > 0 {
             let coded_piece = encoder.code(&mut rng);
 
             match decoder.decode(&coded_piece) {
@@ -197,7 +197,7 @@ fn prop_test_rlnc_decoding_with_useless_pieces() {
         }
 
         assert!(decoder.is_already_decoded());
-        let decoded_data = decoder.get_decoded_data().expect("Extracting decoded data must not fail!");
+        let decoded_data = decoder.into_decoded_data().expect("Extracting decoded data must not fail!");
 
         assert_eq!(data_copy, decoded_data);
     });

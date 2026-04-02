@@ -103,7 +103,7 @@ fn encode(c: &mut Criterion) {
 
         // Number of bytes used as input to encoder + Number of bytes for each coded piece
         group.throughput(Throughput::Bytes(
-            (encoder.get_piece_byte_len() * encoder.get_piece_count() + encoder.get_full_coded_piece_byte_len()) as u64,
+            (encoder.piece_byte_len().value() * encoder.piece_count().value() + encoder.full_coded_piece_byte_len()) as u64,
         ));
         group.bench_function(format!("{:?}", rlnc_config), move |b| {
             b.iter(|| black_box(&encoder).code(black_box(&mut rng)));
@@ -121,14 +121,14 @@ fn encode_zero_alloc(c: &mut Criterion) {
         let data = (0..rlnc_config.data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>();
 
         let encoder = Encoder::new(data, rlnc_config.piece_count).expect("Failed to create RLNC encoder");
-        let mut full_coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+        let mut full_coded_piece = vec![0u8; encoder.full_coded_piece_byte_len()];
 
         group.measurement_time(Duration::from_secs(20));
         group.sample_size(100);
 
         // Number of bytes used as input to encoder + Number of bytes for each coded piece
         group.throughput(Throughput::Bytes(
-            (encoder.get_piece_byte_len() * encoder.get_piece_count() + encoder.get_full_coded_piece_byte_len()) as u64,
+            (encoder.piece_byte_len().value() * encoder.piece_count().value() + encoder.full_coded_piece_byte_len()) as u64,
         ));
         group.bench_function(format!("{:?}", rlnc_config), move |b| {
             b.iter(|| black_box(&encoder).code_with_buf(black_box(&mut rng), black_box(&mut full_coded_piece)));

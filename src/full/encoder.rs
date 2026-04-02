@@ -1,4 +1,5 @@
 use super::consts::BOUNDARY_MARKER;
+use super::types::{PieceByteLen, PieceCount};
 use crate::RLNCError;
 use rand::Rng;
 
@@ -24,18 +25,18 @@ pub struct Encoder {
 
 impl Encoder {
     /// Number of pieces original data got split into and being coded together.
-    pub fn get_piece_count(&self) -> usize {
-        self.piece_count
+    pub fn piece_count(&self) -> PieceCount {
+        unsafe { PieceCount::new(self.piece_count).unwrap_unchecked() }
     }
 
-    /// After padding the original data, it gets split into `self.get_piece_count()` many pieces, which results into these many bytes per piece.
-    pub fn get_piece_byte_len(&self) -> usize {
-        self.piece_byte_len
+    /// After padding the original data, it gets split into `self.piece_count()` many pieces, which results into these many bytes per piece.
+    pub fn piece_byte_len(&self) -> PieceByteLen {
+        unsafe { PieceByteLen::new(self.piece_byte_len).unwrap_unchecked() }
     }
 
-    /// Each full coded piece consists of `self.get_piece_count()` random coefficients, appended by corresponding encoded piece of `self.get_piece_byte_len()` bytes.
-    pub fn get_full_coded_piece_byte_len(&self) -> usize {
-        self.get_piece_count() + self.get_piece_byte_len()
+    /// Each full coded piece consists of `self.piece_count()` random coefficients, appended by corresponding encoded piece of `self.piece_byte_len()` bytes.
+    pub fn full_coded_piece_byte_len(&self) -> usize {
+        self.piece_count + self.piece_byte_len
     }
 
     /// Creates a new `Encoder` without adding any padding to the input data.
@@ -109,7 +110,7 @@ impl Encoder {
     /// is used by the Recoder, to avoid any memory allocation during recoding.
     ///
     /// The output buffer `coded_data` will contain only coded data portion of the
-    /// full erasure-coded piece. Its length must be equal to `self.get_piece_byte_len()`.
+    /// full erasure-coded piece. Its length must be equal to `self.piece_byte_len()`.
     /// It's caller responsibility to fill `coding_vector` with random coding coefficients.
     ///
     /// This implementation might benefit from SIMD assisted fast GF(2^8) arithmetic on some targets
@@ -122,8 +123,8 @@ impl Encoder {
     ///
     /// # Returns
     /// * Returns `Ok(())` on success.
-    /// * Returns `Err(RLNCError::CodingVectorLengthMismatch)` if the length of `coding_vector` is not `self.get_piece_count()`.
-    /// * Returns `Err(RLNCError::InvalidOutputBuffer)` if the length of `coded_data` is not `self.get_piece_byte_len()`.
+    /// * Returns `Err(RLNCError::CodingVectorLengthMismatch)` if the length of `coding_vector` is not `self.piece_count()`.
+    /// * Returns `Err(RLNCError::InvalidOutputBuffer)` if the length of `coded_data` is not `self.piece_byte_len()`.
     #[cfg(not(feature = "parallel"))]
     pub(crate) fn code_with_coding_vector(&self, coding_vector: &[u8], coded_data: &mut [u8]) -> Result<(), RLNCError> {
         if coding_vector.len() != self.piece_count {
@@ -147,7 +148,7 @@ impl Encoder {
     /// is used by the Recoder, to avoid any memory allocation during recoding.
     ///
     /// The output buffer `coded_data` will contain only coded data portion of the
-    /// full erasure-coded piece. Its length must be equal to `self.get_piece_byte_len()`.
+    /// full erasure-coded piece. Its length must be equal to `self.piece_byte_len()`.
     /// It's caller responsibility to fill `coding_vector` with random coding coefficients.
     ///
     /// This implementation uses `rayon` data-parallelism for fast erasure-coding. One might
@@ -161,8 +162,8 @@ impl Encoder {
     ///
     /// # Returns
     /// * Returns `Ok(())` on success.
-    /// * Returns `Err(RLNCError::CodingVectorLengthMismatch)` if the length of `coding_vector` is not `self.get_piece_count()`.
-    /// * Returns `Err(RLNCError::InvalidOutputBuffer)` if the length of `coded_data` is not `self.get_piece_byte_len()`.
+    /// * Returns `Err(RLNCError::CodingVectorLengthMismatch)` if the length of `coding_vector` is not `self.piece_count()`.
+    /// * Returns `Err(RLNCError::InvalidOutputBuffer)` if the length of `coded_data` is not `self.piece_byte_len()`.
     #[cfg(feature = "parallel")]
     pub(crate) fn code_with_coding_vector(&self, coding_vector: &[u8], coded_data: &mut [u8]) -> Result<(), RLNCError> {
         if coding_vector.len() != self.piece_count {
@@ -188,7 +189,7 @@ impl Encoder {
 
                     #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
                     {
-                        piece.iter().map(move |&symbol| (Gf256::new(symbol) * Gf256::new(random_symbol)).get())
+                        piece.iter().map(move |&symbol| (Gf256::new(symbol) * Gf256::new(random_symbol)).value())
                     }
                 })
                 .fold(
@@ -229,7 +230,7 @@ impl Encoder {
     ///
     /// The output buffer `full_coded_piece` will contain the random sampled
     /// coding vector followed by the coded data. The length of `full_coded_piece`
-    /// must be equal to `self.get_full_coded_piece_byte_len()`.
+    /// must be equal to `self.full_coded_piece_byte_len()`.
     ///
     /// # Arguments
     /// * `rng` - A mutable reference to a random number generator.
@@ -239,7 +240,7 @@ impl Encoder {
     /// * Returns `Ok(())` on success.
     /// * Returns `Err(RLNCError::InvalidOutputBuffer)` if the length of `full_coded_piece` is incorrect.
     pub fn code_with_buf<R: Rng + ?Sized>(&self, rng: &mut R, full_coded_piece: &mut [u8]) -> Result<(), RLNCError> {
-        if full_coded_piece.len() != self.get_full_coded_piece_byte_len() {
+        if full_coded_piece.len() != self.full_coded_piece_byte_len() {
             return Err(RLNCError::InvalidOutputBuffer);
         }
 
@@ -260,9 +261,9 @@ impl Encoder {
     ///
     /// # Returns
     /// A `Vec<u8>` containing the random sampled coding vector followed by the
-    /// coded data. The length of the returned vector is `self.get_full_coded_piece_byte_len()`.
+    /// coded data. The length of the returned vector is `self.full_coded_piece_byte_len()`.
     pub fn code<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec<u8> {
-        let mut full_coded_piece = vec![0u8; self.get_full_coded_piece_byte_len()];
+        let mut full_coded_piece = vec![0u8; self.full_coded_piece_byte_len()];
         unsafe { self.code_with_buf(rng, &mut full_coded_piece).unwrap_unchecked() };
 
         full_coded_piece
@@ -271,7 +272,7 @@ impl Encoder {
 
 #[cfg(test)]
 mod tests {
-    use super::{Encoder, RLNCError};
+    use super::{Encoder, PieceByteLen, PieceCount, RLNCError};
     use rand::Rng;
 
     #[test]
@@ -367,8 +368,8 @@ mod tests {
         let encoder = Encoder::new(data, piece_count).expect("Failed to create Encoder for invalid inputs test");
 
         // Test case 1: Coding vector is shorter than expected
-        let short_coding_vector: Vec<u8> = (0..(encoder.get_piece_count() - 1)).map(|_| rng.random()).collect();
-        let mut coded_data = vec![0u8; encoder.get_piece_byte_len()];
+        let short_coding_vector: Vec<u8> = (0..(encoder.piece_count().value() - 1)).map(|_| rng.random()).collect();
+        let mut coded_data = vec![0u8; encoder.piece_byte_len().value()];
 
         let result_short = encoder.code_with_coding_vector(&short_coding_vector, &mut coded_data);
 
@@ -379,8 +380,8 @@ mod tests {
         );
 
         // Test case 2: Coded data buffer is shorter than expected
-        let coding_vector: Vec<u8> = (0..encoder.get_piece_count()).map(|_| rng.random()).collect();
-        let mut short_coded_data = vec![0u8; encoder.get_piece_byte_len() - 1];
+        let coding_vector: Vec<u8> = (0..encoder.piece_count().value()).map(|_| rng.random()).collect();
+        let mut short_coded_data = vec![0u8; encoder.piece_byte_len().value() - 1];
 
         let result_short = encoder.code_with_coding_vector(&coding_vector, &mut short_coded_data);
 
@@ -391,8 +392,8 @@ mod tests {
         );
 
         // Test case 3: Coding vector is longer than expected
-        let long_coding_vector: Vec<u8> = (0..(encoder.get_piece_count() + 1)).map(|_| rng.random()).collect();
-        let mut coded_data = vec![0u8; encoder.get_piece_byte_len()];
+        let long_coding_vector: Vec<u8> = (0..(encoder.piece_count().value() + 1)).map(|_| rng.random()).collect();
+        let mut coded_data = vec![0u8; encoder.piece_byte_len().value()];
 
         let result_long = encoder.code_with_coding_vector(&long_coding_vector, &mut coded_data);
 
@@ -403,8 +404,8 @@ mod tests {
         );
 
         // Test case 4: Coded data buffer is longer than expected
-        let coding_vector: Vec<u8> = (0..encoder.get_piece_count()).map(|_| rng.random()).collect();
-        let mut long_coded_data = vec![0u8; encoder.get_piece_byte_len() + 1];
+        let coding_vector: Vec<u8> = (0..encoder.piece_count().value()).map(|_| rng.random()).collect();
+        let mut long_coded_data = vec![0u8; encoder.piece_byte_len().value() + 1];
 
         let result_long = encoder.code_with_coding_vector(&coding_vector, &mut long_coded_data);
 
@@ -416,7 +417,7 @@ mod tests {
 
         // Test case 5: Empty coding vector
         let empty_coding_vector: Vec<u8> = vec![];
-        let mut coded_data = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+        let mut coded_data = vec![0u8; encoder.full_coded_piece_byte_len()];
 
         let result_empty = encoder.code_with_coding_vector(&empty_coding_vector, &mut coded_data);
 
@@ -427,7 +428,7 @@ mod tests {
         );
 
         // Test case 6: Empty coding vector
-        let coding_vector: Vec<u8> = (0..encoder.get_piece_count()).map(|_| rng.random()).collect();
+        let coding_vector: Vec<u8> = (0..encoder.piece_count().value()).map(|_| rng.random()).collect();
         let mut empty_coded_data: Vec<u8> = vec![];
 
         let result_empty = encoder.code_with_coding_vector(&coding_vector, &mut empty_coded_data);
@@ -439,8 +440,8 @@ mod tests {
         );
 
         // Test case 7: Valid coding vector
-        let valid_coding_vector: Vec<u8> = (0..encoder.get_piece_count()).map(|_| rng.random()).collect();
-        let mut valid_coded_data = vec![0u8; encoder.get_piece_byte_len()];
+        let valid_coding_vector: Vec<u8> = (0..encoder.piece_count().value()).map(|_| rng.random()).collect();
+        let mut valid_coded_data = vec![0u8; encoder.piece_byte_len().value()];
 
         let result_valid = encoder.code_with_coding_vector(&valid_coding_vector, &mut valid_coded_data);
 
@@ -457,7 +458,7 @@ mod tests {
         let encoder = Encoder::new(data, piece_count).expect("Failed to create Encoder for invalid inputs test");
 
         // Test case 1: Coded piece buffer is shorter than expected
-        let mut short_coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len() - 1];
+        let mut short_coded_piece = vec![0u8; encoder.full_coded_piece_byte_len() - 1];
         let result_short = encoder.code_with_buf(&mut rng, &mut short_coded_piece);
 
         assert!(result_short.is_err());
@@ -467,7 +468,7 @@ mod tests {
         );
 
         // Test case 2: Coded piece buffer is longer than expected
-        let mut long_coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len() + 1];
+        let mut long_coded_piece = vec![0u8; encoder.full_coded_piece_byte_len() + 1];
         let result_long = encoder.code_with_buf(&mut rng, &mut long_coded_piece);
 
         assert!(result_long.is_err());
@@ -487,7 +488,7 @@ mod tests {
         );
 
         // Test case 4: Valid full coded piece buffer
-        let mut coded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+        let mut coded_piece = vec![0u8; encoder.full_coded_piece_byte_len()];
         let result_valid = encoder.code_with_buf(&mut rng, &mut coded_piece);
 
         assert!(result_valid.is_ok());
@@ -503,10 +504,10 @@ mod tests {
         let data_single = (0..data_byte_len_single).map(|_| rng.random()).collect::<Vec<u8>>();
         let encoder_single = Encoder::new(data_single.clone(), piece_count_single).expect("Failed to create Encoder (single piece)");
 
-        assert_eq!(encoder_single.get_piece_count(), piece_count_single);
-        assert_eq!(encoder_single.get_piece_byte_len(), (data_byte_len_single + 1).div_ceil(piece_count_single));
+        assert_eq!(encoder_single.piece_count(), PieceCount::new(piece_count_single).unwrap());
+        assert_eq!(encoder_single.piece_byte_len(), PieceByteLen::new((data_byte_len_single + 1).div_ceil(piece_count_single)).unwrap());
         assert_eq!(
-            encoder_single.get_full_coded_piece_byte_len(),
+            encoder_single.full_coded_piece_byte_len(),
             piece_count_single + (data_byte_len_single + 1).div_ceil(piece_count_single)
         );
 
@@ -515,9 +516,9 @@ mod tests {
         let data_min = vec![42u8];
         let encoder_min = Encoder::new(data_min, piece_count_min).expect("Failed to create Encoder (min data)");
 
-        assert_eq!(encoder_min.get_piece_count(), piece_count_min);
-        assert_eq!(encoder_min.get_piece_byte_len(), 2); // 1 byte data + 1 boundary marker
-        assert_eq!(encoder_min.get_full_coded_piece_byte_len(), 3); // 1 coeff + 2 data bytes
+        assert_eq!(encoder_min.piece_count().value(), piece_count_min);
+        assert_eq!(encoder_min.piece_byte_len().value(), 2); // 1 byte data + 1 boundary marker
+        assert_eq!(encoder_min.full_coded_piece_byte_len(), 3); // 1 coeff + 2 data bytes
 
         // Test case 3: Data length equals piece count (each piece gets 1 data byte + padding)
         let data_byte_len_eq = 10usize;
@@ -525,9 +526,9 @@ mod tests {
         let data_eq = (0..data_byte_len_eq).map(|_| rng.random()).collect::<Vec<u8>>();
         let encoder_eq = Encoder::new(data_eq, piece_count_eq).expect("Failed to create Encoder (equal length)");
 
-        assert_eq!(encoder_eq.get_piece_count(), piece_count_eq);
-        assert_eq!(encoder_eq.get_piece_byte_len(), (data_byte_len_eq + 1).div_ceil(piece_count_eq)); // 2 bytes per piece
-        assert_eq!(encoder_eq.get_full_coded_piece_byte_len(), piece_count_eq + 2);
+        assert_eq!(encoder_eq.piece_count().value(), piece_count_eq);
+        assert_eq!(encoder_eq.piece_byte_len().value(), (data_byte_len_eq + 1).div_ceil(piece_count_eq)); // 2 bytes per piece
+        assert_eq!(encoder_eq.full_coded_piece_byte_len(), piece_count_eq + 2);
 
         // Test case 4: Large piece count (many small pieces)
         let data_byte_len_large = 100usize;
@@ -535,10 +536,10 @@ mod tests {
         let data_large = (0..data_byte_len_large).map(|_| rng.random()).collect::<Vec<u8>>();
         let encoder_large = Encoder::new(data_large, piece_count_large).expect("Failed to create Encoder (large piece count)");
 
-        assert_eq!(encoder_large.get_piece_count(), piece_count_large);
-        assert_eq!(encoder_large.get_piece_byte_len(), (data_byte_len_large + 1).div_ceil(piece_count_large));
+        assert_eq!(encoder_large.piece_count().value(), piece_count_large);
+        assert_eq!(encoder_large.piece_byte_len().value(), (data_byte_len_large + 1).div_ceil(piece_count_large));
         assert_eq!(
-            encoder_large.get_full_coded_piece_byte_len(),
+            encoder_large.full_coded_piece_byte_len(),
             piece_count_large + (data_byte_len_large + 1).div_ceil(piece_count_large)
         );
     }

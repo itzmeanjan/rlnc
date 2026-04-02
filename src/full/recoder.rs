@@ -1,4 +1,5 @@
 use super::encoder::Encoder;
+use super::types::{PieceByteLen, PieceCount};
 use crate::{RLNCError, common::gf256::Gf256};
 use rand::Rng;
 
@@ -23,28 +24,28 @@ pub struct Recoder {
 
 impl Recoder {
     /// Number of pieces original data got split into to be coded together.
-    pub fn get_original_num_pieces_coded_together(&self) -> usize {
-        self.num_pieces_coded_together
+    pub fn piece_count(&self) -> PieceCount {
+        unsafe { PieceCount::new(self.num_pieces_coded_together).unwrap_unchecked() }
     }
 
     /// Number of pieces received by Recoder, which is getting recoded together, producing new pieces.
-    pub fn get_num_pieces_recoded_together(&self) -> usize {
+    pub fn recoded_piece_count(&self) -> usize {
         self.num_pieces_received
     }
 
-    /// After padding the original data, it gets split into `self.get_original_num_pieces_coded_together()` many pieces, which results into these many bytes per piece.
-    pub fn get_piece_byte_len(&self) -> usize {
-        self.full_coded_piece_byte_len - self.num_pieces_coded_together
+    /// After padding the original data, it gets split into `self.piece_count()` many pieces, which results into these many bytes per piece.
+    pub fn piece_byte_len(&self) -> PieceByteLen {
+        unsafe { PieceByteLen::new(self.full_coded_piece_byte_len - self.num_pieces_coded_together).unwrap_unchecked() }
     }
 
-    /// Each full coded piece consists of `self.get_original_num_pieces_coded_together()` random coefficients, appended by corresponding encoded piece of `self.get_piece_byte_len()` bytes.
-    pub fn get_full_coded_piece_byte_len(&self) -> usize {
+    /// Each full coded piece consists of `self.piece_count()` random coefficients, appended by corresponding encoded piece of `self.piece_byte_len()` bytes.
+    pub fn full_coded_piece_byte_len(&self) -> usize {
         self.full_coded_piece_byte_len
     }
 
     /// Creates a new `Recoder` instance from a vector of received coded pieces.
     ///
-    /// Each full coded piece in `data` is of `full_coded_piece_byte_len` bytes.
+    /// Each full coded piece in `data` is of `piece_count + piece_byte_len` bytes.
     /// A full coded piece = coding vector ++ coded piece
     ///
     /// The `Recoder` extracts the coding vectors and coded pieces from the input
@@ -52,38 +53,27 @@ impl Recoder {
     /// represents the source pieces extracted from the input.
     ///
     /// # Arguments
-    /// * `data`: A vector of bytes containing the concatenated full coded pieces, each of
-    ///   `full_coded_piece_byte_len` bytes length.
-    /// * `full_coded_piece_byte_len`: The byte length of a full coded piece.
-    /// * `num_pieces_coded_together`: The number of original pieces that were
-    ///   linearly combined to create each coded piece. This is also the length
-    ///   of the coding vector prepended to each full coded piece.
+    /// * `data`: A vector of bytes containing the concatenated full coded pieces.
+    /// * `piece_byte_len`: The byte length of each coded data piece (excluding the coding vector).
+    /// * `piece_count`: The number of original pieces that were linearly combined
+    ///   to create each coded piece. This is also the length of the coding vector
+    ///   prepended to each full coded piece.
     ///
     /// # Returns
     /// * Returns `Ok(Recoder)` on successful creation.
-    /// * Returns `Err(RLNCError::NotEnoughPiecesToRecode)` if the input `data` is empty or does not contain at least one full coded piece.
-    /// * Returns `Err(RLNCError::PieceLengthZero)` if `full_coded_piece_byte_len` is zero.
-    /// * Returns `Err(RLNCError::PieceCountZero)` if `num_pieces_coded_together` is zero.
-    /// * Returns `Err(RLNCError::PieceLengthTooShort)` if `full_coded_piece_byte_len` is not greater than `num_pieces_coded_together`.
-    pub fn new(data: Vec<u8>, full_coded_piece_byte_len: usize, num_pieces_coded_together: usize) -> Result<Recoder, RLNCError> {
-        if data.is_empty() {
+    /// * Returns `Err(RLNCError::NotEnoughPiecesToRecode)` if the input `data` does not contain at least one full coded piece.
+    pub fn new(data: Vec<u8>, piece_byte_len: PieceByteLen, piece_count: PieceCount) -> Result<Recoder, RLNCError> {
+        let num_pieces_coded_together = piece_count.value();
+        let pbl = piece_byte_len.value();
+        let full_coded_piece_byte_len = num_pieces_coded_together + pbl;
+
+        let num_pieces_received = data.len() / full_coded_piece_byte_len;
+        if num_pieces_received == 0 {
             return Err(RLNCError::NotEnoughPiecesToRecode);
         }
-        if full_coded_piece_byte_len == 0 {
-            return Err(RLNCError::PieceLengthZero);
-        }
-        if num_pieces_coded_together == 0 {
-            return Err(RLNCError::PieceCountZero);
-        }
-        if full_coded_piece_byte_len <= num_pieces_coded_together {
-            return Err(RLNCError::PieceLengthTooShort);
-        }
-
-        let piece_byte_len = full_coded_piece_byte_len - num_pieces_coded_together;
-        let num_pieces_received = data.len() / full_coded_piece_byte_len;
 
         let mut coding_vectors = Vec::with_capacity(num_pieces_received * num_pieces_coded_together);
-        let mut coded_pieces = Vec::with_capacity(num_pieces_received * piece_byte_len);
+        let mut coded_pieces = Vec::with_capacity(num_pieces_received * pbl);
 
         data.chunks_exact(full_coded_piece_byte_len).for_each(|full_coded_piece| {
             let coding_vector = &full_coded_piece[..num_pieces_coded_together];
@@ -110,7 +100,7 @@ impl Recoder {
     /// Produces a new coded piece by recoding the source pieces, random sampling coding coefficients
     /// and writing full coded piece into the provided buffer. The output buffer contains the
     /// computed source coding vector followed by the coded data. The length of `full_recoded_piece`
-    /// must be equal to `self.get_full_coded_piece_byte_len()`.
+    /// must be equal to `self.full_coded_piece_byte_len()`.
     ///
     /// # Arguments
     /// * `rng`: Used to sample the random recoding vector.
@@ -140,7 +130,7 @@ impl Recoder {
                     acc + Gf256::new(cur) * self.coding_vectors[row_begins_at + coeff_idx]
                 });
 
-            *coeff_val = computed_coeff.get();
+            *coeff_val = computed_coeff.value();
         }
 
         unsafe {
@@ -162,9 +152,9 @@ impl Recoder {
     ///
     /// # Returns
     /// A `Vec<u8>` representing the new coded piece prepended with its source coding vector.
-    /// The length of the returned vector is `self.get_full_coded_piece_byte_len()`.
+    /// The length of the returned vector is `self.full_coded_piece_byte_len()`.
     pub fn recode<R: Rng + ?Sized>(&mut self, rng: &mut R) -> Vec<u8> {
-        let mut full_recoded_piece = vec![0u8; self.get_full_coded_piece_byte_len()];
+        let mut full_recoded_piece = vec![0u8; self.full_coded_piece_byte_len()];
         unsafe { self.recode_with_buf(rng, &mut full_recoded_piece).unwrap_unchecked() }
 
         full_recoded_piece
@@ -185,69 +175,34 @@ mod tests {
         let piece_count = 32usize;
         let encoder = Encoder::new((0..data_byte_len).map(|_| rng.random()).collect::<Vec<u8>>(), piece_count)
             .expect("Failed to create Encoder for recoder new invalid inputs test");
-        let full_coded_piece_byte_len = encoder.get_full_coded_piece_byte_len();
-        let num_pieces_coded_together = encoder.get_piece_count();
 
         // Test case 1: Empty `data` vector
         let empty_data: Vec<u8> = Vec::new();
-        let result_empty_data = Recoder::new(empty_data, full_coded_piece_byte_len, num_pieces_coded_together);
+        let result_empty_data = Recoder::new(empty_data, encoder.piece_byte_len(), encoder.piece_count());
         assert!(result_empty_data.is_err());
         assert_eq!(
             result_empty_data.expect_err("Expected NotEnoughPiecesToRecode error for empty data"),
             RLNCError::NotEnoughPiecesToRecode
         );
 
-        // Test case 2: `full_coded_piece_byte_len` is zero
-        let data_non_empty = vec![1, 2, 3]; // Needs at least one piece worth of data for non-empty input
-        let result_zero_full_len = Recoder::new(data_non_empty.clone(), 0, num_pieces_coded_together);
-        assert!(result_zero_full_len.is_err());
+        // Test case 2: Data shorter than one full coded piece
+        let short_data = vec![1u8; encoder.full_coded_piece_byte_len() - 1];
+        let result_short = Recoder::new(short_data, encoder.piece_byte_len(), encoder.piece_count());
+        assert!(result_short.is_err());
         assert_eq!(
-            result_zero_full_len.expect_err("Expected PieceLengthZero error for zero full coded piece length"),
-            RLNCError::PieceLengthZero
+            result_short.expect_err("Expected NotEnoughPiecesToRecode error for short data"),
+            RLNCError::NotEnoughPiecesToRecode
         );
 
-        // Test case 3: `num_pieces_coded_together` is zero
-        let result_zero_piece_count = Recoder::new(data_non_empty.clone(), full_coded_piece_byte_len, 0);
-        assert!(result_zero_piece_count.is_err());
-        assert_eq!(
-            result_zero_piece_count.expect_err("Expected PieceCountZero error for zero pieces coded together"),
-            RLNCError::PieceCountZero
-        );
-
-        // Test case 4: `full_coded_piece_byte_len` is not greater than `num_pieces_coded_together`
-        // Case 4.1: Equal
-        let result_equal_len = Recoder::new(
-            data_non_empty.clone(),
-            num_pieces_coded_together, // full_coded_piece_byte_len = num_pieces_coded_together
-            num_pieces_coded_together,
-        );
-        assert!(result_equal_len.is_err());
-        assert_eq!(
-            result_equal_len.expect_err("Expected PieceLengthTooShort error when full length equals piece count"),
-            RLNCError::PieceLengthTooShort
-        );
-
-        // Case 4.2: Less than
-        let result_less_len = Recoder::new(
-            data_non_empty.clone(),
-            num_pieces_coded_together - 1, // full_coded_piece_byte_len < num_pieces_coded_together
-            num_pieces_coded_together,
-        );
-        assert!(result_less_len.is_err());
-        assert_eq!(
-            result_less_len.expect_err("Expected PieceLengthTooShort error when full length is less than piece count"),
-            RLNCError::PieceLengthTooShort
-        );
-
-        // Test case 5: Valid input (using existing encoder setup to generate valid data)
+        // Test case 3: Valid input (using existing encoder setup to generate valid data)
         let num_pieces_to_recode_with = 5;
         let coded_pieces_for_recoder: Vec<u8> = (0..num_pieces_to_recode_with).flat_map(|_| encoder.code(&mut rng)).collect();
 
-        let result_valid = Recoder::new(coded_pieces_for_recoder, full_coded_piece_byte_len, num_pieces_coded_together);
+        let result_valid = Recoder::new(coded_pieces_for_recoder, encoder.piece_byte_len(), encoder.piece_count());
         assert!(result_valid.is_ok());
         let recoder = result_valid.expect("Expected Recoder to be created successfully with valid inputs");
-        assert_eq!(recoder.get_original_num_pieces_coded_together(), num_pieces_coded_together);
-        assert_eq!(recoder.get_num_pieces_recoded_together(), num_pieces_to_recode_with);
+        assert_eq!(recoder.piece_count(), encoder.piece_count());
+        assert_eq!(recoder.recoded_piece_count(), num_pieces_to_recode_with);
     }
 
     #[test]
@@ -262,11 +217,11 @@ mod tests {
         let encoder = Encoder::new(data, piece_count).expect("Failed to create Encoder for invalid inputs test");
 
         let coded_pieces_for_recoder: Vec<u8> = (0..num_pieces_to_recode_with).flat_map(|_| encoder.code(&mut rng)).collect();
-        let mut recoder = Recoder::new(coded_pieces_for_recoder, encoder.get_full_coded_piece_byte_len(), encoder.get_piece_count())
+        let mut recoder = Recoder::new(coded_pieces_for_recoder, encoder.piece_byte_len(), encoder.piece_count())
             .expect("Failed to create Recoder for invalid inputs test");
 
         // Test case 1: Recoded piece buffer is shorter than expected
-        let mut short_recoded_piece = vec![0u8; recoder.get_full_coded_piece_byte_len() - 1];
+        let mut short_recoded_piece = vec![0u8; recoder.full_coded_piece_byte_len() - 1];
         let result_short = recoder.recode_with_buf(&mut rng, &mut short_recoded_piece);
 
         assert!(result_short.is_err());
@@ -276,7 +231,7 @@ mod tests {
         );
 
         // Test case 2: Recoded piece buffer is longer than expected
-        let mut long_recoded_piece = vec![0u8; recoder.get_full_coded_piece_byte_len() + 1];
+        let mut long_recoded_piece = vec![0u8; recoder.full_coded_piece_byte_len() + 1];
         let result_long = recoder.recode_with_buf(&mut rng, &mut long_recoded_piece);
 
         assert!(result_long.is_err());
@@ -296,7 +251,7 @@ mod tests {
         );
 
         // Test case 4: Valid recoded piece buffer
-        let mut recoded_piece = vec![0u8; encoder.get_full_coded_piece_byte_len()];
+        let mut recoded_piece = vec![0u8; encoder.full_coded_piece_byte_len()];
         let result_valid = recoder.recode_with_buf(&mut rng, &mut recoded_piece);
 
         assert!(result_valid.is_ok());
@@ -312,21 +267,15 @@ mod tests {
         let encoder = Encoder::new(data, piece_count).expect("Failed to create Encoder for recoder getters test");
 
         let num_pieces_to_recode_with = 10; // Number of coded pieces given to recoder
-        let full_coded_piece_byte_len = encoder.get_full_coded_piece_byte_len();
-        let original_piece_byte_len = encoder.get_piece_byte_len();
 
         let coded_pieces_for_recoder: Vec<u8> = (0..num_pieces_to_recode_with).flat_map(|_| encoder.code(&mut rng)).collect();
 
-        let recoder = Recoder::new(
-            coded_pieces_for_recoder,
-            full_coded_piece_byte_len,
-            piece_count, // `num_pieces_coded_together` from original encoder
-        )
-        .expect("Recoder creation failed");
+        let recoder = Recoder::new(coded_pieces_for_recoder, encoder.piece_byte_len(), encoder.piece_count())
+            .expect("Recoder creation failed");
 
-        assert_eq!(recoder.get_original_num_pieces_coded_together(), piece_count);
-        assert_eq!(recoder.get_num_pieces_recoded_together(), num_pieces_to_recode_with);
-        assert_eq!(recoder.get_piece_byte_len(), original_piece_byte_len);
-        assert_eq!(recoder.get_full_coded_piece_byte_len(), full_coded_piece_byte_len);
+        assert_eq!(recoder.piece_count(), encoder.piece_count());
+        assert_eq!(recoder.recoded_piece_count(), num_pieces_to_recode_with);
+        assert_eq!(recoder.piece_byte_len(), encoder.piece_byte_len());
+        assert_eq!(recoder.full_coded_piece_byte_len(), encoder.full_coded_piece_byte_len());
     }
 }
